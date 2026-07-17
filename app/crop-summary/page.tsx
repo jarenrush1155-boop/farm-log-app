@@ -140,18 +140,18 @@ export default function CropSummaryPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h3 className="text-xl font-semibold">Crop Summary - {selectedYear}</h3>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 sm:mb-8">
+        <h3 className="text-xl sm:text-2xl font-semibold">Crop Summary - {selectedYear}</h3>
         <select 
           value={selectedYear} 
           onChange={(e) => setSelectedYear(parseInt(e.target.value))} 
-          className="p-3 border rounded-lg text-lg font-medium"
+          className="form-input sm:w-auto text-lg font-medium"
         >
           {[2026, 2025, 2024, 2023].map(year => <option key={year} value={year}>{year}</option>)}
         </select>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {fields.map(field => {
           const activities = getFieldActivities(field.id);
           const waterInches = getFieldWaterInches(field.id);
@@ -161,18 +161,18 @@ export default function CropSummaryPage() {
           const isExpanded = expandedFields.has(field.id);
 
           return (
-            <div key={field.id} className="bg-white border rounded-xl shadow">
-              <div className="p-6 flex justify-between items-center cursor-pointer hover:bg-gray-50" onClick={() => toggleField(field.id)}>
-                <div>
-                  <h4 className="font-semibold text-lg">{field.name} ({field.acres} acres - {field.type})</h4>
-                  <p className="text-sm text-gray-600">
-                    Crop: <strong>{crop}</strong> • Yield: <strong>{yieldVal} bu/ac</strong> • 
-                    Water: {waterInches.toFixed(1)} inches • {activities.length} activities
+            <div key={field.id} className="bg-white border rounded-xl shadow-sm">
+              <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleField(field.id)}>
+                <div className="min-w-0">
+                  <h4 className="font-semibold text-base sm:text-lg">{field.name} ({field.acres} acres - {field.type})</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Crop: <strong>{crop}</strong> • Yield: <strong>{yieldVal} bu/ac</strong>
+                    <span className="block sm:inline"> • Water: {waterInches.toFixed(1)} in • {activities.length} activities</span>
                   </p>
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); printFieldReport(field); }} 
-                  className="bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm hover:bg-emerald-600"
+                  className="btn-primary text-sm w-full sm:w-auto"
                 >
                   Print Report
                 </button>

@@ -22,7 +22,6 @@ export default function Dashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    // Stats
     const { data: fields } = await supabase.from('fields').select('acres');
     const { data: operations } = await supabase.from('operations').select('id');
     const { data: sprays } = await supabase.from('spray_logs').select('id');
@@ -33,26 +32,15 @@ export default function Dashboard() {
       totalFields: fields?.length || 0,
       totalOperations: operations?.length || 0,
       totalSprays: sprays?.length || 0,
-      openTasks: tasks?.filter(t => !t.completed).length || 0,
+      openTasks: tasks?.filter((t) => !t.completed).length || 0,
     });
 
-    // Recent Operations
-    const { data: recentOps } = await supabase
-      .from('operations')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(5);
+    const { data: recentOps } = await supabase.from('operations').select('*').order('date', { ascending: false }).limit(5);
     setRecentOperations(recentOps || []);
 
-    // Recent Sprays
-    const { data: recentS } = await supabase
-      .from('spray_logs')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(5);
+    const { data: recentS } = await supabase.from('spray_logs').select('*').order('date', { ascending: false }).limit(5);
     setRecentSprays(recentS || []);
 
-    // Open Tasks
     const { data: openT } = await supabase
       .from('tasks')
       .select('*')
@@ -64,88 +52,91 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold mb-8">Farm Dashboard</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Farm Dashboard</h2>
 
-      {/* Key Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-2xl shadow text-center">
-          <p className="text-gray-500 text-sm">Total Acres</p>
-          <p className="text-4xl font-bold text-emerald-700 mt-2">{stats.totalAcres.toFixed(1)}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow text-center">
-          <p className="text-gray-500 text-sm">Fields</p>
-          <p className="text-4xl font-bold text-emerald-700 mt-2">{stats.totalFields}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow text-center">
-          <p className="text-gray-500 text-sm">Operations</p>
-          <p className="text-4xl font-bold text-emerald-700 mt-2">{stats.totalOperations}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow text-center">
-          <p className="text-gray-500 text-sm">Spray Logs</p>
-          <p className="text-4xl font-bold text-emerald-700 mt-2">{stats.totalSprays}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow text-center">
-          <p className="text-gray-500 text-sm">Open Tasks</p>
-          <p className="text-4xl font-bold text-orange-600 mt-2">{stats.openTasks}</p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-12">
+        {[
+          { label: 'Total Acres', value: stats.totalAcres.toFixed(1), color: 'text-emerald-700' },
+          { label: 'Fields', value: stats.totalFields, color: 'text-emerald-700' },
+          { label: 'Operations', value: stats.totalOperations, color: 'text-emerald-700' },
+          { label: 'Spray Logs', value: stats.totalSprays, color: 'text-emerald-700' },
+          { label: 'Open Tasks', value: stats.openTasks, color: 'text-orange-600' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm text-center">
+            <p className="text-gray-500 text-xs sm:text-sm">{stat.label}</p>
+            <p className={`text-2xl sm:text-4xl font-bold ${stat.color} mt-1 sm:mt-2`}>{stat.value}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Operations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         <div>
-          <div className="flex justify-between mb-4">
+          <div className="flex justify-between items-center mb-3 sm:mb-4 gap-2">
             <h3 className="font-semibold">Recent Operations</h3>
-            <Link href="/operations" className="text-emerald-600 text-sm hover:underline">View All →</Link>
+            <Link href="/operations" className="text-emerald-600 text-sm hover:underline min-h-[44px] inline-flex items-center">
+              View All →
+            </Link>
           </div>
-          <div className="bg-white rounded-2xl shadow divide-y">
-            {recentOperations.length > 0 ? recentOperations.map(op => (
-              <div key={op.id} className="p-5">
-                <div className="flex justify-between">
-                  <span className="capitalize font-medium">{op.operation_type}</span>
-                  <span className="text-sm text-gray-500">{op.date}</span>
+          <div className="bg-white rounded-2xl shadow-sm divide-y">
+            {recentOperations.length > 0 ? (
+              recentOperations.map((op) => (
+                <div key={op.id} className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <span className="capitalize font-medium">{op.operation_type?.replaceAll?.('_', ' ') ?? op.operation_type}</span>
+                    <span className="text-sm text-gray-500">{op.date}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1 break-words">{op.notes || 'No notes'}</p>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">{op.notes || 'No notes'}</p>
-              </div>
-            )) : <p className="p-8 text-gray-500 text-center">No operations yet.</p>}
+              ))
+            ) : (
+              <p className="p-8 text-gray-500 text-center">No operations yet.</p>
+            )}
           </div>
         </div>
 
-        {/* Recent Spray Logs */}
         <div>
-          <div className="flex justify-between mb-4">
+          <div className="flex justify-between items-center mb-3 sm:mb-4 gap-2">
             <h3 className="font-semibold">Recent Spray Logs</h3>
-            <Link href="/spray" className="text-emerald-600 text-sm hover:underline">View All →</Link>
+            <Link href="/spray" className="text-emerald-600 text-sm hover:underline min-h-[44px] inline-flex items-center">
+              View All →
+            </Link>
           </div>
-          <div className="bg-white rounded-2xl shadow divide-y">
-            {recentSprays.length > 0 ? recentSprays.map(s => (
-              <div key={s.id} className="p-5">
-                <div className="flex justify-between">
-                  <span className="font-medium">{s.chemical_mix}</span>
-                  <span className="text-sm text-gray-500">{s.date}</span>
+          <div className="bg-white rounded-2xl shadow-sm divide-y">
+            {recentSprays.length > 0 ? (
+              recentSprays.map((s) => (
+                <div key={s.id} className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <span className="font-medium break-words">{s.chemical_mix}</span>
+                    <span className="text-sm text-gray-500 shrink-0">{s.date}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Wind: {s.wind_direction}</p>
                 </div>
-                <p className="text-sm text-gray-600">Wind: {s.wind_direction}</p>
-              </div>
-            )) : <p className="p-8 text-gray-500 text-center">No spray logs yet.</p>}
+              ))
+            ) : (
+              <p className="p-8 text-gray-500 text-center">No spray logs yet.</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Open Tasks */}
-      <div className="mt-10">
-        <div className="flex justify-between mb-4">
+      <div className="mt-8 sm:mt-10">
+        <div className="flex justify-between items-center mb-3 sm:mb-4 gap-2">
           <h3 className="font-semibold">Open Tasks</h3>
-          <Link href="/tasks" className="text-emerald-600 text-sm hover:underline">All Tasks →</Link>
+          <Link href="/tasks" className="text-emerald-600 text-sm hover:underline min-h-[44px] inline-flex items-center">
+            All Tasks →
+          </Link>
         </div>
-        <div className="bg-white rounded-2xl shadow divide-y">
-          {recentTasks.length > 0 ? recentTasks.map(task => (
-            <div key={task.id} className="p-5 flex items-center gap-4">
-              <input type="checkbox" className="w-5 h-5 accent-emerald-600" />
-              <div>
+        <div className="bg-white rounded-2xl shadow-sm divide-y">
+          {recentTasks.length > 0 ? (
+            recentTasks.map((task) => (
+              <div key={task.id} className="p-4 sm:p-5">
                 <p className="font-medium">{task.title}</p>
-                {task.description && <p className="text-sm text-gray-600">{task.description}</p>}
+                {task.description && <p className="text-sm text-gray-600 mt-1">{task.description}</p>}
               </div>
-            </div>
-          )) : <p className="p-8 text-gray-500 text-center">No open tasks — great job!</p>}
+            ))
+          ) : (
+            <p className="p-8 text-gray-500 text-center">No open tasks — great job!</p>
+          )}
         </div>
       </div>
     </div>

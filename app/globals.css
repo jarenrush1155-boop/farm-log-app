@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f9fafb;
   --foreground: #171717;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe areas for notched phones (used by AppShell) */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Comfortable default form controls on touch devices */
+input,
+select,
+textarea,
+button {
+  font-size: 16px; /* avoids iOS zoom on focus */
+}
+
+input[type='number'] {
+  appearance: textfield;
+}
+
+/* Utility for primary action buttons */
+.btn-primary {
+  @apply inline-flex items-center justify-center bg-emerald-700 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 min-h-[44px] font-medium transition-colors disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center border border-gray-300 bg-white px-5 py-3 rounded-lg min-h-[44px] hover:bg-gray-50 transition-colors;
+}
+
+.form-input {
+  @apply w-full p-3 border border-gray-300 rounded-lg bg-white min-h-[44px];
+}
+
+.card-panel {
+  @apply bg-gray-100 p-4 sm:p-6 rounded-xl mb-6 sm:mb-8;
 }

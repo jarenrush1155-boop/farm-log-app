@@ -1,13 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
+import PinField from '../../components/PinField';
+
+type EquipmentOption = {
+  id: string;
+  name: string;
+  type?: string;
+  current_hours?: number | null;
+  hours?: number | null;
+  separator_hours?: number | null;
+};
 
 export default function MaintenancePage() {
-  const [equipment, setEquipment] = useState<any[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentOption[]>([]);
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingLog, setEditingLog] = useState<any>(null);
+  const [pin, setPin] = useState('');
 
   const [newLog, setNewLog] = useState({
     equipment_id: '',
@@ -15,7 +27,7 @@ export default function MaintenancePage() {
     separator_hours: '',
     work_done: '',
     cost: '',
-    notes: ''
+    notes: '',
   });
 
   useEffect(() => {
@@ -31,62 +43,74 @@ export default function MaintenancePage() {
   const fetchMaintenance = async () => {
     const { data } = await supabase
       .from('maintenance_logs')
-      .select(`
+      .select(
+        `
         *,
-        equipment (name)
-      `)
+        equipment (name, type)
+      `
+      )
       .order('date', { ascending: false });
     setMaintenance(data || []);
   };
 
+  const selectedEquipment = useMemo(
+    () => equipment.find((eq) => eq.id === newLog.equipment_id),
+    [equipment, newLog.equipment_id]
+  );
+
+  const isMotorized = selectedEquipment?.type === 'motorized';
+
   const saveMaintenance = async () => {
     if (!newLog.equipment_id || !newLog.work_done) {
-      alert("Please select equipment and describe the work");
+      alert('Please select equipment and describe the work');
       return;
     }
+    if (!pin) return alert('Please enter the PIN to save');
 
     const hours = newLog.hours ? parseFloat(newLog.hours) : null;
     const separatorHours = newLog.separator_hours ? parseFloat(newLog.separator_hours) : null;
 
     const payload = {
       equipment_id: newLog.equipment_id,
-      date: new Date().toISOString().split('T')[0],
+      date: editingLog?.date || new Date().toISOString().split('T')[0],
       hours: hours,
       separator_hours: separatorHours,
       work_done: newLog.work_done,
       cost: newLog.cost ? parseFloat(newLog.cost) : null,
-      notes: newLog.notes || null
+      notes: newLog.notes || null,
     };
 
-    let error;
-    if (editingLog) {
-      ({ error } = await supabase.from('maintenance_logs').update(payload).eq('id', editingLog.id));
-    } else {
-      ({ error } = await supabase.from('maintenance_logs').insert(payload));
-    }
+    const { error } = await mutateWithPin({
+      pin,
+      table: 'maintenance_logs',
+      action: editingLog ? 'update' : 'insert',
+      id: editingLog?.id,
+      data: payload,
+    });
 
     if (error) {
-      alert("Error: " + error.message);
-    } else {
-      // Update equipment hours if provided
-      if (hours !== null) {
-        await supabase.rpc('update_equipment_hours', {
-          equip_id: newLog.equipment_id,
-          new_hours: hours,
-          new_separator_hours: separatorHours
-        });
-      }
-
-      alert(editingLog ? "Maintenance updated!" : "Maintenance log saved!");
-      resetForm();
-      fetchMaintenance();
-      fetchEquipment();
+      alert('Error: ' + error.message);
+      return;
     }
+
+    // DB trigger recomputes equipment.current_hours = MAX(log hours).
+    // Explicit recompute is a safe fallback if the trigger is not installed yet.
+    if (newLog.equipment_id) {
+      await supabase.rpc('recompute_equipment_hours', {
+        p_equipment_id: newLog.equipment_id,
+      });
+    }
+
+    alert(editingLog ? 'Maintenance updated!' : 'Maintenance log saved!');
+    resetForm();
+    fetchMaintenance();
+    fetchEquipment();
   };
 
   const resetForm = () => {
     setNewLog({ equipment_id: '', hours: '', separator_hours: '', work_done: '', cost: '', notes: '' });
     setEditingLog(null);
+    setPin('');
   };
 
   const editLog = (log: any) => {
@@ -97,14 +121,34 @@ export default function MaintenancePage() {
       separator_hours: log.separator_hours?.toString() || '',
       work_done: log.work_done || '',
       cost: log.cost?.toString() || '',
-      notes: log.notes || ''
+      notes: log.notes || '',
     });
+    setPin('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const deleteLog = async (id: string) => {
-    if (!confirm("Delete this maintenance log?")) return;
-    await supabase.from('maintenance_logs').delete().eq('id', id);
+  const deleteLog = async (id: string, equipmentId?: string) => {
+    const enteredPin = promptPinForDelete('this maintenance log');
+    if (!enteredPin) return;
+
+    const { error } = await mutateWithPin({
+      pin: enteredPin,
+      table: 'maintenance_logs',
+      action: 'delete',
+      id,
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    if (equipmentId) {
+      await supabase.rpc('recompute_equipment_hours', { p_equipment_id: equipmentId });
+    }
+
     fetchMaintenance();
+    fetchEquipment();
   };
 
   const toggleExpand = (id: string) => {
@@ -114,86 +158,195 @@ export default function MaintenancePage() {
     setExpanded(newSet);
   };
 
+  const onEquipmentChange = (equipmentId: string) => {
+    const eq = equipment.find((e) => e.id === equipmentId);
+    const knownHours = eq?.current_hours ?? eq?.hours;
+    setNewLog({
+      ...newLog,
+      equipment_id: equipmentId,
+      // Prefill with known meter reading so the next log starts from current
+      hours: !editingLog && knownHours != null ? String(knownHours) : newLog.hours,
+      separator_hours:
+        !editingLog && eq?.separator_hours != null ? String(eq.separator_hours) : newLog.separator_hours,
+    });
+  };
+
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-6">Equipment Maintenance</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Equipment Maintenance</h3>
 
-      {/* Form */}
-      <div className="bg-gray-100 p-6 rounded-xl mb-8">
+      <div className="card-panel">
         <h4 className="font-medium mb-4">{editingLog ? 'Edit Maintenance Log' : 'Log New Maintenance'}</h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select value={newLog.equipment_id} onChange={(e) => setNewLog({...newLog, equipment_id: e.target.value})} className="p-3 border rounded-lg">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <select
+            value={newLog.equipment_id}
+            onChange={(e) => onEquipmentChange(e.target.value)}
+            className="form-input sm:col-span-2"
+          >
             <option value="">Select Equipment</option>
-            {equipment.map(eq => (
-              <option key={eq.id} value={eq.id}>{eq.name}</option>
+            {equipment.map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.name}
+                {eq.type === 'motorized' && (eq.current_hours ?? eq.hours) != null
+                  ? ` (${eq.current_hours ?? eq.hours} hrs)`
+                  : ''}
+              </option>
             ))}
           </select>
 
-          <input type="number" step="0.1" placeholder="Current Hours" value={newLog.hours} onChange={(e) => setNewLog({...newLog, hours: e.target.value})} className="p-3 border rounded-lg" />
-          <input type="number" step="0.1" placeholder="Separator Hours (Combines)" value={newLog.separator_hours} onChange={(e) => setNewLog({...newLog, separator_hours: e.target.value})} className="p-3 border rounded-lg" />
+          {(isMotorized || !selectedEquipment) && (
+            <>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Hour meter reading</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  inputMode="decimal"
+                  placeholder="Current hours"
+                  value={newLog.hours}
+                  onChange={(e) => setNewLog({ ...newLog, hours: e.target.value })}
+                  className="form-input"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Equipment current hours become the highest value from all logs.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Separator hours (combines)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  inputMode="decimal"
+                  placeholder="Optional"
+                  value={newLog.separator_hours}
+                  onChange={(e) => setNewLog({ ...newLog, separator_hours: e.target.value })}
+                  className="form-input"
+                />
+              </div>
+            </>
+          )}
 
-          <input type="text" placeholder="Work Done" value={newLog.work_done} onChange={(e) => setNewLog({...newLog, work_done: e.target.value})} className="p-3 border rounded-lg md:col-span-2" />
+          <input
+            type="text"
+            placeholder="Work Done"
+            value={newLog.work_done}
+            onChange={(e) => setNewLog({ ...newLog, work_done: e.target.value })}
+            className="form-input sm:col-span-2"
+          />
 
-          <input type="number" step="0.01" placeholder="Cost ($)" value={newLog.cost} onChange={(e) => setNewLog({...newLog, cost: e.target.value})} className="p-3 border rounded-lg" />
+          <input
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            placeholder="Cost ($)"
+            value={newLog.cost}
+            onChange={(e) => setNewLog({ ...newLog, cost: e.target.value })}
+            className="form-input"
+          />
 
-          <textarea placeholder="Notes" value={newLog.notes} onChange={(e) => setNewLog({...newLog, notes: e.target.value})} className="p-3 border rounded-lg md:col-span-2" />
+          <textarea
+            placeholder="Notes"
+            value={newLog.notes}
+            onChange={(e) => setNewLog({ ...newLog, notes: e.target.value })}
+            className="form-input sm:col-span-2"
+            rows={2}
+          />
+
+          <div className="sm:col-span-2">
+            <PinField value={pin} onChange={setPin} className="form-input" />
+          </div>
         </div>
 
-        <div className="mt-6 flex gap-4">
-          <button onClick={saveMaintenance} className="bg-emerald-700 text-white px-8 py-3 rounded-lg hover:bg-emerald-600">
+        <div className="mt-5 flex flex-col sm:flex-row gap-3">
+          <button onClick={saveMaintenance} className="btn-primary">
             {editingLog ? 'Update Log' : 'Save Maintenance Log'}
           </button>
-          {editingLog && <button onClick={resetForm} className="border px-6 py-3 rounded-lg">Cancel</button>}
+          {editingLog && (
+            <button onClick={resetForm} className="btn-secondary">
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 
-      {/* History */}
-      <h4 className="font-medium mb-4">Maintenance History</h4>
+      <h4 className="font-medium mb-3 sm:mb-4">Maintenance History</h4>
       <div className="space-y-3">
-        {maintenance.map(log => {
+        {maintenance.map((log) => {
           const isExpanded = expanded.has(log.id);
-          const workDoneShort = log.work_done?.length > 60 ? log.work_done.substring(0, 57) + '...' : log.work_done;
+          const workDoneShort =
+            log.work_done?.length > 60 ? log.work_done.substring(0, 57) + '...' : log.work_done;
 
           return (
-            <div key={log.id} className="bg-white border rounded-xl shadow">
-              <div 
+            <div key={log.id} className="bg-white border rounded-xl shadow-sm">
+              <button
+                type="button"
                 onClick={() => toggleExpand(log.id)}
-                className="p-6 grid grid-cols-12 items-center cursor-pointer hover:bg-gray-50"
+                className="w-full p-4 sm:p-5 text-left hover:bg-gray-50 min-h-[64px] rounded-xl"
               >
-                <div className="col-span-4">
-                  <span className="font-medium">{log.equipment?.name}</span>
-                  <span className="ml-4 text-gray-500 text-sm">{log.date}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
+                  <div className="min-w-0">
+                    <span className="font-medium">{log.equipment?.name}</span>
+                    <span className="ml-3 text-gray-500 text-sm">{log.date}</span>
+                  </div>
+                  <div className="flex items-center justify-between sm:justify-end gap-4 text-sm">
+                    <span className="text-gray-700 truncate max-w-[14rem] sm:max-w-xs">{workDoneShort}</span>
+                    {log.hours != null && <span className="font-medium shrink-0">{log.hours} hrs</span>}
+                  </div>
                 </div>
-                
-                <div className="col-span-5 text-center text-gray-700 font-medium truncate px-4">
-                  {workDoneShort}
-                </div>
-
-                <div className="col-span-3 text-right">
-                  {log.hours && <span className="font-medium">{log.hours} hrs</span>}
-                </div>
-              </div>
+              </button>
 
               {isExpanded && (
-                <div className="border-t p-6 bg-gray-50">
-                  <div className="grid grid-cols-2 gap-y-4 text-sm">
-                    {log.hours && <p><strong>Hours:</strong> {log.hours}</p>}
-                    {log.separator_hours && <p><strong>Separator Hours:</strong> {log.separator_hours}</p>}
-                    {log.cost && <p><strong>Cost:</strong> ${log.cost}</p>}
-                    {log.work_done && <p className="col-span-2"><strong>Work Done:</strong> {log.work_done}</p>}
-                    {log.notes && <p className="col-span-2"><strong>Notes:</strong> {log.notes}</p>}
+                <div className="border-t p-4 sm:p-6 bg-gray-50 rounded-b-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {log.hours != null && (
+                      <p>
+                        <strong>Hours:</strong> {log.hours}
+                      </p>
+                    )}
+                    {log.separator_hours != null && (
+                      <p>
+                        <strong>Separator Hours:</strong> {log.separator_hours}
+                      </p>
+                    )}
+                    {log.cost != null && (
+                      <p>
+                        <strong>Cost:</strong> ${log.cost}
+                      </p>
+                    )}
+                    {log.work_done && (
+                      <p className="sm:col-span-2">
+                        <strong>Work Done:</strong> {log.work_done}
+                      </p>
+                    )}
+                    {log.notes && (
+                      <p className="sm:col-span-2">
+                        <strong>Notes:</strong> {log.notes}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="mt-6 flex gap-6">
-                    <button onClick={() => editLog(log)} className="text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => deleteLog(log.id)} className="text-red-600 hover:underline">Delete</button>
+                  <div className="mt-5 flex flex-wrap gap-4">
+                    <button type="button" onClick={() => editLog(log)} className="text-blue-600 hover:underline min-h-[44px] px-1">
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteLog(log.id, log.equipment_id)}
+                      className="text-red-600 hover:underline min-h-[44px] px-1"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               )}
             </div>
           );
         })}
+
+        {maintenance.length === 0 && (
+          <p className="text-center text-gray-500 py-10">No maintenance logs yet.</p>
+        )}
       </div>
     </div>
   );

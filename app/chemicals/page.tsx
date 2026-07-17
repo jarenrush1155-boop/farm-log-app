@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
+import PinField from '../../components/PinField';
+import TableScroll from '../../components/TableScroll';
 
 export default function ChemicalsPage() {
   const [chemicals, setChemicals] = useState<any[]>([]);
-  const [newChemical, setNewChemical] = useState({ 
-    name: '', 
-    unit: 'GPA' 
+  const [pin, setPin] = useState('');
+  const [newChemical, setNewChemical] = useState({
+    name: '',
+    unit: 'GPA',
   });
 
   const units = ['GPA', 'oz/acre', 'lbs/acre', 'pint/acre', 'oz/gal', 'lbs/gal', 'pint/gal'];
@@ -22,83 +26,112 @@ export default function ChemicalsPage() {
   };
 
   const addChemical = async () => {
-    if (!newChemical.name) return alert("Chemical name is required");
+    if (!newChemical.name) return alert('Chemical name is required');
+    if (!pin) return alert('Please enter the PIN to save');
 
-    const { error } = await supabase.from('chemicals').insert({
-      name: newChemical.name,
-      unit: newChemical.unit
+    const { error } = await mutateWithPin({
+      pin,
+      table: 'chemicals',
+      action: 'insert',
+      data: {
+        name: newChemical.name,
+        unit: newChemical.unit,
+      },
     });
 
     if (error) alert(error.message);
     else {
       setNewChemical({ name: '', unit: 'GPA' });
+      setPin('');
       fetchChemicals();
     }
   };
 
   const deleteChemical = async (id: string) => {
-    if (!confirm("Delete this chemical?")) return;
-    await supabase.from('chemicals').delete().eq('id', id);
-    fetchChemicals();
+    const enteredPin = promptPinForDelete('this chemical');
+    if (!enteredPin) return;
+
+    const { error } = await mutateWithPin({
+      pin: enteredPin,
+      table: 'chemicals',
+      action: 'delete',
+      id,
+    });
+
+    if (error) alert(error.message);
+    else fetchChemicals();
   };
 
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-6">Manage Chemicals</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Manage Chemicals</h3>
 
-      <div className="bg-gray-100 p-6 rounded-xl mb-8">
+      <div className="card-panel">
         <h4 className="font-medium mb-4">Add New Chemical</h4>
-        <div className="flex gap-4">
-          <input 
-            type="text" 
-            placeholder="Chemical Name (e.g. Roundup PowerMax)" 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input
+            type="text"
+            placeholder="Chemical Name (e.g. Roundup PowerMax)"
             value={newChemical.name}
-            onChange={(e) => setNewChemical({...newChemical, name: e.target.value})}
-            className="flex-1 p-3 border rounded-lg"
+            onChange={(e) => setNewChemical({ ...newChemical, name: e.target.value })}
+            className="form-input sm:col-span-2"
           />
-          
-          <select 
-            value={newChemical.unit}
-            onChange={(e) => setNewChemical({...newChemical, unit: e.target.value})}
-            className="p-3 border rounded-lg"
-          >
-            {units.map(unit => (
-              <option key={unit} value={unit}>{unit}</option>
+
+          <select value={newChemical.unit} onChange={(e) => setNewChemical({ ...newChemical, unit: e.target.value })} className="form-input">
+            {units.map((unit) => (
+              <option key={unit} value={unit}>
+                {unit}
+              </option>
             ))}
           </select>
 
-          <button onClick={addChemical} className="bg-emerald-700 text-white px-8 py-3 rounded-lg hover:bg-emerald-600">
+          <PinField value={pin} onChange={setPin} className="form-input" />
+
+          <button onClick={addChemical} className="btn-primary sm:col-span-2 lg:col-span-4 sm:w-auto sm:justify-self-start">
             Add Chemical
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-4 text-left">Chemical Name</th>
-              <th className="p-4">Unit</th>
-              <th className="p-4 w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {chemicals.map(chem => (
-              <tr key={chem.id} className="border-t">
-                <td className="p-4 font-medium">{chem.name}</td>
-                <td className="p-4">{chem.unit}</td>
-                <td className="p-4">
-                  <button 
-                    onClick={() => deleteChemical(chem.id)} 
-                    className="text-red-600 hover:text-red-800 text-sm"
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div className="space-y-3 sm:hidden">
+        {chemicals.map((chem) => (
+          <div key={chem.id} className="bg-white border rounded-xl p-4 flex items-center justify-between gap-3 shadow-sm">
+            <div>
+              <p className="font-medium">{chem.name}</p>
+              <p className="text-sm text-gray-600">{chem.unit}</p>
+            </div>
+            <button onClick={() => deleteChemical(chem.id)} className="text-red-600 min-h-[44px] px-2">
+              Delete
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
+        <TableScroll>
+          <table className="w-full min-w-[400px]">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-4 text-left">Chemical Name</th>
+                <th className="p-4">Unit</th>
+                <th className="p-4 w-24">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {chemicals.map((chem) => (
+                <tr key={chem.id} className="border-t">
+                  <td className="p-4 font-medium">{chem.name}</td>
+                  <td className="p-4 text-center">{chem.unit}</td>
+                  <td className="p-4 text-center">
+                    <button onClick={() => deleteChemical(chem.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px]">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       </div>
     </div>
   );
