@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 function parseChemicalMix(mix: string | null | undefined): Array<{ name: string; rate: string }> {
   if (!mix || !mix.trim()) return [];
@@ -24,10 +24,10 @@ function parseChemicalMix(mix: string | null | undefined): Array<{ name: string;
 
 export default function SprayLogsPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [sprayLogs, setSprayLogs] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
   const [premixes, setPremixes] = useState<any[]>([]);
-  const [pin, setPin] = useState('');
 
   const [newSpray, setNewSpray] = useState({
     field_id: '',
@@ -105,10 +105,11 @@ export default function SprayLogsPage() {
       error('Field and at least one chemical required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const pin = await requestPin({
+      title: editingLog ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingLog ? 'Confirm PIN to update this spray log.' : 'Confirm PIN to save this spray log.',
+    });
+    if (!pin) return;
 
     const chemicalMix = newSpray.chemicals.map((c) => `${c.name} @ ${c.rate}`).join(', ');
 
@@ -151,7 +152,6 @@ export default function SprayLogsPage() {
       chemicals: [],
     });
     setEditingLog(null);
-    setPin('');
   };
 
   const editLog = (log: any) => {
@@ -166,11 +166,10 @@ export default function SprayLogsPage() {
       notes: log.notes || '',
       chemicals: parseChemicalMix(log.chemical_mix),
     });
-    setPin('');
   };
 
   const deleteLog = async (id: string) => {
-    const enteredPin = promptPinForDelete('this spray log');
+    const enteredPin = await requestPinForDelete('this spray log');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -254,10 +253,6 @@ export default function SprayLogsPage() {
           </select>
 
           <textarea placeholder="Notes" value={newSpray.notes} onChange={(e) => setNewSpray({ ...newSpray, notes: e.target.value })} className="form-input sm:col-span-2" />
-
-          <div className="sm:col-span-2">
-            <PinField value={pin} onChange={setPin} className="form-input" />
-          </div>
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
