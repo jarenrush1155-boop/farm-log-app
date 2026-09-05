@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 export default function ChemicalsPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [chemicals, setChemicals] = useState<any[]>([]);
-  const [pin, setPin] = useState('');
   const [editingChemical, setEditingChemical] = useState<any>(null);
   const [newChemical, setNewChemical] = useState({
     name: '',
@@ -32,7 +32,6 @@ export default function ChemicalsPage() {
   const resetForm = () => {
     setNewChemical({ name: '', unit: 'GPA' });
     setEditingChemical(null);
-    setPin('');
   };
 
   const saveChemical = async () => {
@@ -40,10 +39,12 @@ export default function ChemicalsPage() {
       error('Chemical name is required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+
+    const pin = await requestPin({
+      title: editingChemical ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingChemical ? 'Confirm PIN to update this chemical.' : 'Confirm PIN to add this chemical.',
+    });
+    if (!pin) return;
 
     const { error: mutateError } = await mutateWithPin({
       pin,
@@ -70,11 +71,10 @@ export default function ChemicalsPage() {
       name: chem.name || '',
       unit: chem.unit || 'GPA',
     });
-    setPin('');
   };
 
   const deleteChemical = async (id: string) => {
-    const enteredPin = promptPinForDelete('this chemical');
+    const enteredPin = await requestPinForDelete('this chemical');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -114,8 +114,6 @@ export default function ChemicalsPage() {
               </option>
             ))}
           </select>
-
-          <PinField value={pin} onChange={setPin} className="form-input" />
 
           <div className="flex flex-col sm:flex-row gap-3 sm:col-span-2 lg:col-span-4">
             <button onClick={saveChemical} className="btn-primary sm:w-auto">

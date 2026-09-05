@@ -70,19 +70,3 @@ export async function mutateWithPin(options: {
 
   return { data: result, error: null };
 }
-
-/** Prompt the user for a PIN. Returns null if cancelled or empty. */
-export function promptForPin(message = 'Enter PIN to continue:'): string | null {
-  const entered = window.prompt(message);
-  if (entered === null) return null;
-  const trimmed = entered.trim();
-  return trimmed === '' ? null : trimmed;
-}
-
-/** Confirm + PIN for destructive actions. Returns PIN or null if aborted. */
-export function promptPinForDelete(entityLabel = 'this record'): string | null {
-  if (!window.confirm(`Delete ${entityLabel}? This cannot be undone.`)) {
-    return null;
-  }
-  return promptForPin('Enter PIN to delete:');
-}

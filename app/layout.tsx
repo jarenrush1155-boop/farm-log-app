@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import AppShell from '../components/AppShell';
 import ToastProvider from '../components/ToastProvider';
+import PinProvider from '../components/PinProvider';
 
 export const metadata: Metadata = {
   title: {
@@ -27,7 +28,9 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-gray-50 antialiased">
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <PinProvider>
+            <AppShell>{children}</AppShell>
+          </PinProvider>
         </ToastProvider>
       </body>
     </html>

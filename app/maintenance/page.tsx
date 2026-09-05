@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 type EquipmentOption = {
   id: string;
@@ -18,11 +18,11 @@ type EquipmentOption = {
 
 export default function MaintenancePage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [equipment, setEquipment] = useState<EquipmentOption[]>([]);
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingLog, setEditingLog] = useState<any>(null);
-  const [pin, setPin] = useState('');
 
   const [newLog, setNewLog] = useState({
     equipment_id: '',
@@ -68,10 +68,11 @@ export default function MaintenancePage() {
       error('Please select equipment and describe the work');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const pin = await requestPin({
+      title: editingLog ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingLog ? 'Confirm PIN to update this maintenance log.' : 'Confirm PIN to save this maintenance log.',
+    });
+    if (!pin) return;
 
     const hours = newLog.hours ? parseFloat(newLog.hours) : null;
     const separatorHours = newLog.separator_hours ? parseFloat(newLog.separator_hours) : null;
@@ -116,7 +117,6 @@ export default function MaintenancePage() {
   const resetForm = () => {
     setNewLog({ equipment_id: '', hours: '', separator_hours: '', work_done: '', cost: '', notes: '' });
     setEditingLog(null);
-    setPin('');
   };
 
   const editLog = (log: any) => {
@@ -129,12 +129,11 @@ export default function MaintenancePage() {
       cost: log.cost?.toString() || '',
       notes: log.notes || '',
     });
-    setPin('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteLog = async (id: string, equipmentId?: string) => {
-    const enteredPin = promptPinForDelete('this maintenance log');
+    const enteredPin = await requestPinForDelete('this maintenance log');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -259,10 +258,6 @@ export default function MaintenancePage() {
             className="form-input sm:col-span-2"
             rows={2}
           />
-
-          <div className="sm:col-span-2">
-            <PinField value={pin} onChange={setPin} className="form-input" />
-          </div>
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3">

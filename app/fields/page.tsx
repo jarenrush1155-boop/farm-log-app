@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 type Field = {
   id: string;
@@ -19,9 +19,9 @@ type Field = {
 
 export default function FieldsPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [fields, setFields] = useState<Field[]>([]);
   const [editingField, setEditingField] = useState<Field | null>(null);
-  const [pin, setPin] = useState('');
   const [newField, setNewField] = useState({
     name: '',
     acres: '',
@@ -42,7 +42,6 @@ export default function FieldsPage() {
   const resetForm = () => {
     setNewField({ name: '', acres: '', type: 'irrigated', legal_description: '', notes: '' });
     setEditingField(null);
-    setPin('');
   };
 
   const saveField = async () => {
@@ -50,10 +49,12 @@ export default function FieldsPage() {
       error('Field name and acres are required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+
+    const pin = await requestPin({
+      title: editingField ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingField ? 'Confirm PIN to update this field.' : 'Confirm PIN to add this field.',
+    });
+    if (!pin) return;
 
     const payload = {
       name: newField.name.trim(),
@@ -89,12 +90,11 @@ export default function FieldsPage() {
       legal_description: field.legal_description || '',
       notes: field.notes || '',
     });
-    setPin('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteField = async (id: string) => {
-    const enteredPin = promptPinForDelete('this field');
+    const enteredPin = await requestPinForDelete('this field');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -130,10 +130,6 @@ export default function FieldsPage() {
           <input type="text" placeholder="Legal Description (optional)" value={newField.legal_description} onChange={(e) => setNewField({ ...newField, legal_description: e.target.value })} className="form-input sm:col-span-2" />
 
           <textarea placeholder="Notes (optional)" value={newField.notes} onChange={(e) => setNewField({ ...newField, notes: e.target.value })} className="form-input sm:col-span-2" rows={2} />
-
-          <div className="sm:col-span-2">
-            <PinField value={pin} onChange={setPin} className="form-input" />
-          </div>
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
@@ -155,7 +151,6 @@ export default function FieldsPage() {
         />
       ) : (
         <>
-          {/* Mobile cards */}
           <div className="space-y-3 sm:hidden">
             {fields.map((field) => (
               <div key={field.id} className="bg-white border rounded-xl p-4 shadow-sm">
@@ -180,7 +175,6 @@ export default function FieldsPage() {
             ))}
           </div>
 
-          {/* Desktop table */}
           <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
             <TableScroll>
               <table className="w-full min-w-[640px]">
