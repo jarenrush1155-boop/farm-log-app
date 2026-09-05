@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
+import EmptyState from '../../components/EmptyState';
 
 type EquipmentOption = {
   id: string;
@@ -345,7 +346,10 @@ export default function MaintenancePage() {
         })}
 
         {maintenance.length === 0 && (
-          <p className="text-center text-gray-500 py-10">No maintenance logs yet.</p>
+          <EmptyState
+            title="No maintenance logs yet"
+            description="Log service work above to track hours and repairs."
+          />
         )}
       </div>
     </div>
