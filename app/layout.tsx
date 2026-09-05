@@ -1,7 +1,21 @@
-'use client';
-
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import AppShell from '../components/AppShell';
+
+export const metadata: Metadata = {
+  title: {
+    default: 'JLM Farm Logs',
+    template: '%s · JLM Farm Logs',
+  },
+  description: 'Farm field, equipment, spray, and irrigation logs',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#065f46',
+};
 
 export default function RootLayout({
   children,
@@ -10,10 +24,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#065f46" />
-      </head>
       <body className="bg-gray-50 antialiased">
         <AppShell>{children}</AppShell>
       </body>
