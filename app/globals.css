@@ -26,6 +26,15 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Hide scrollbar on mobile bottom nav while keeping scroll */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Comfortable default form controls on touch devices */
 input,
 select,

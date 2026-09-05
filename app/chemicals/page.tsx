@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
+import EmptyState from '../../components/EmptyState';
 
 export default function ChemicalsPage() {
   const [chemicals, setChemicals] = useState<any[]>([]);
@@ -93,46 +94,55 @@ export default function ChemicalsPage() {
         </div>
       </div>
 
-      <div className="space-y-3 sm:hidden">
-        {chemicals.map((chem) => (
-          <div key={chem.id} className="bg-white border rounded-xl p-4 flex items-center justify-between gap-3 shadow-sm">
-            <div>
-              <p className="font-medium">{chem.name}</p>
-              <p className="text-sm text-gray-600">{chem.unit}</p>
-            </div>
-            <button onClick={() => deleteChemical(chem.id)} className="text-red-600 min-h-[44px] px-2">
-              Delete
-            </button>
+      {chemicals.length === 0 ? (
+        <EmptyState
+          title="No chemicals yet"
+          description="Add chemicals here so you can build premixes and spray logs."
+        />
+      ) : (
+        <>
+          <div className="space-y-3 sm:hidden">
+            {chemicals.map((chem) => (
+              <div key={chem.id} className="bg-white border rounded-xl p-4 flex items-center justify-between gap-3 shadow-sm">
+                <div>
+                  <p className="font-medium">{chem.name}</p>
+                  <p className="text-sm text-gray-600">{chem.unit}</p>
+                </div>
+                <button onClick={() => deleteChemical(chem.id)} className="text-red-600 min-h-[44px] px-2">
+                  Delete
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
-        <TableScroll>
-          <table className="w-full min-w-[400px]">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-4 text-left">Chemical Name</th>
-                <th className="p-4">Unit</th>
-                <th className="p-4 w-24">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chemicals.map((chem) => (
-                <tr key={chem.id} className="border-t">
-                  <td className="p-4 font-medium">{chem.name}</td>
-                  <td className="p-4 text-center">{chem.unit}</td>
-                  <td className="p-4 text-center">
-                    <button onClick={() => deleteChemical(chem.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px]">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
-      </div>
+          <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
+            <TableScroll>
+              <table className="w-full min-w-[400px]">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="p-4 text-left">Chemical Name</th>
+                    <th className="p-4">Unit</th>
+                    <th className="p-4 w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chemicals.map((chem) => (
+                    <tr key={chem.id} className="border-t">
+                      <td className="p-4 font-medium">{chem.name}</td>
+                      <td className="p-4 text-center">{chem.unit}</td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => deleteChemical(chem.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px]">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+          </div>
+        </>
+      )}
     </div>
   );
 }

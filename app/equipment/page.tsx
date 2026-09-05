@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
+import EmptyState from '../../components/EmptyState';
 
 type Equipment = {
   id: string;
@@ -341,7 +342,10 @@ export default function EquipmentPage() {
         })}
 
         {equipment.length === 0 && (
-          <p className="text-center text-gray-500 py-10">No equipment yet.</p>
+          <EmptyState
+            title="No equipment yet"
+            description="Add tractors, combines, and implements using the form above."
+          />
         )}
       </div>
     </div>

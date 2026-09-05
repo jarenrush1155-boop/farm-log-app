@@ -5,17 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: '🏠' },
-  { href: '/fields', label: 'Fields', icon: '🌾' },
-  { href: '/equipment', label: 'Equipment', icon: '🚜' },
-  { href: '/maintenance', label: 'Maintenance', icon: '🔧' },
-  { href: '/operations', label: 'Operations', icon: '📋' },
-  { href: '/spray', label: 'Spray Logs', icon: '🧪' },
-  { href: '/chemicals', label: 'Chemicals', icon: '🧪' },
-  { href: '/premixes', label: 'Premixes', icon: '🧪' },
-  { href: '/irrigation', label: 'Irrigation', icon: '💧' },
-  { href: '/crop-summary', label: 'Crop Summary', icon: '📊' },
-  { href: '/tasks', label: 'Tasks', icon: '✅' },
+  { href: '/', label: 'Dashboard', shortLabel: 'Home', icon: '🏠' },
+  { href: '/fields', label: 'Fields', shortLabel: 'Fields', icon: '🌾' },
+  { href: '/equipment', label: 'Equipment', shortLabel: 'Equip', icon: '🚜' },
+  { href: '/maintenance', label: 'Maintenance', shortLabel: 'Maint', icon: '🔧' },
+  { href: '/operations', label: 'Operations', shortLabel: 'Ops', icon: '📋' },
+  { href: '/spray', label: 'Spray Logs', shortLabel: 'Spray', icon: '🧪' },
+  { href: '/chemicals', label: 'Chemicals', shortLabel: 'Chems', icon: '🧪' },
+  { href: '/premixes', label: 'Premixes', shortLabel: 'Premix', icon: '🧪' },
+  { href: '/irrigation', label: 'Irrigation', shortLabel: 'Water', icon: '💧' },
+  { href: '/crop-summary', label: 'Crop Summary', shortLabel: 'Crops', icon: '📊' },
+  { href: '/tasks', label: 'Tasks', shortLabel: 'Tasks', icon: '✅' },
 ];
 
 function NavLinks({
@@ -28,7 +28,13 @@ function NavLinks({
   compact?: boolean;
 }) {
   return (
-    <nav className={compact ? 'flex gap-1 overflow-x-auto px-2 py-2' : 'flex-1 space-y-1'}>
+    <nav
+      className={
+        compact
+          ? 'flex gap-0.5 overflow-x-auto overscroll-x-contain px-1.5 py-1.5 scrollbar-none'
+          : 'flex-1 space-y-1'
+      }
+    >
       {menuItems.map((item) => {
         const active = pathname === item.href;
         return (
@@ -36,9 +42,10 @@ function NavLinks({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
+            title={item.label}
             className={
               compact
-                ? `flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-xs min-w-[4.25rem] min-h-[3.25rem] transition-colors ${
+                ? `flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[10px] leading-tight min-w-[3.25rem] min-h-[3rem] transition-colors ${
                     active ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:bg-emerald-700/70'
                   }`
                 : `w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 min-h-[44px] hover:bg-emerald-700 transition-colors ${
@@ -46,10 +53,12 @@ function NavLinks({
                   }`
             }
           >
-            <span className="text-base leading-none" aria-hidden>
+            <span className={compact ? 'text-lg leading-none' : 'text-base leading-none'} aria-hidden>
               {item.icon}
             </span>
-            <span className={compact ? 'leading-tight text-center' : ''}>{item.label}</span>
+            <span className={compact ? 'text-center whitespace-nowrap' : ''}>
+              {compact ? item.shortLabel : item.label}
+            </span>
           </Link>
         );
       })}
@@ -99,7 +108,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-2xl leading-none">☰</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-emerald-200">Farm Log</p>
+          <p className="text-xs text-emerald-200">JLM Farm Logs</p>
           <p className="font-semibold truncate">{currentLabel}</p>
         </div>
       </header>
@@ -130,12 +139,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
+      {/* Main content — extra bottom padding so fixed mobile nav does not cover content */}
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 pb-28 md:pb-8">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
 
-      {/* Mobile bottom quick nav (scrollable icons) */}
+      {/* Mobile bottom quick nav (horizontally scrollable) */}
       <nav
         className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-emerald-900/30 bg-emerald-800 text-white shadow-[0_-4px_12px_rgba(0,0,0,0.12)] safe-bottom"
         aria-label="Primary"

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
+import EmptyState from '../../components/EmptyState';
 
 export default function PremixesPage() {
   const [premixes, setPremixes] = useState<any[]>([]);
@@ -158,6 +159,13 @@ export default function PremixesPage() {
 
       <h4 className="font-medium mb-3">Saved Premixes</h4>
 
+      {premixes.length === 0 ? (
+        <EmptyState
+          title="No premixes yet"
+          description="Create a premix above to reuse common chemical mixes on spray logs."
+        />
+      ) : (
+      <>
       <div className="space-y-3 sm:hidden">
         {premixes.map((pm) => (
           <div key={pm.id} className="bg-white border rounded-xl p-4 shadow-sm">
@@ -210,6 +218,8 @@ export default function PremixesPage() {
           </table>
         </TableScroll>
       </div>
+      </>
+      )}
     </div>
   );
 }

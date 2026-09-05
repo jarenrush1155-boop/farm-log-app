@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptForPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
+import EmptyState from '../../components/EmptyState';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -119,28 +120,39 @@ export default function TasksPage() {
         </button>
       </div>
 
-      <div className="space-y-3">
-        {filteredTasks.map((task) => (
-          <div key={task.id} className="bg-white border rounded-xl p-4 sm:p-5 flex items-start sm:items-center gap-3 sm:gap-4 shadow-sm">
-            <input type="checkbox" checked={task.completed} onChange={() => toggleComplete(task.id, !task.completed)} className="w-6 h-6 mt-0.5 accent-emerald-600 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className={`font-medium break-words ${task.completed ? 'line-through text-gray-500' : ''}`}>{task.title}</p>
-              {task.description && <p className="text-sm text-gray-600 mt-1 break-words">{task.description}</p>}
-              {task.created_at && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Added: {new Date(task.created_at).toLocaleDateString()} at{' '}
-                  {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              )}
+      {filteredTasks.length === 0 ? (
+        <EmptyState
+          title={filter === 'all' ? 'No tasks yet' : filter === 'open' ? 'No open tasks' : 'No completed tasks'}
+          description={
+            filter === 'all'
+              ? 'Add a task above to keep track of farm to-dos.'
+              : filter === 'open'
+                ? 'All caught up — or switch the filter to see completed tasks.'
+                : 'Completed tasks will show up here.'
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {filteredTasks.map((task) => (
+            <div key={task.id} className="bg-white border rounded-xl p-4 sm:p-5 flex items-start sm:items-center gap-3 sm:gap-4 shadow-sm">
+              <input type="checkbox" checked={task.completed} onChange={() => toggleComplete(task.id, !task.completed)} className="w-6 h-6 mt-0.5 accent-emerald-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className={`font-medium break-words ${task.completed ? 'line-through text-gray-500' : ''}`}>{task.title}</p>
+                {task.description && <p className="text-sm text-gray-600 mt-1 break-words">{task.description}</p>}
+                {task.created_at && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Added: {new Date(task.created_at).toLocaleDateString()} at{' '}
+                    {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => deleteTask(task.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px] shrink-0">
+                Delete
+              </button>
             </div>
-            <button onClick={() => deleteTask(task.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px] shrink-0">
-              Delete
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {filteredTasks.length === 0 && <p className="text-gray-500 text-center py-12">No tasks found.</p>}
+          ))}
+        </div>
+      )}
     </div>
   );
 }

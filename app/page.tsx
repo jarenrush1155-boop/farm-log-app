@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Link from 'next/link';
+import EmptyState from '../components/EmptyState';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -89,7 +90,9 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <p className="p-8 text-gray-500 text-center">No operations yet.</p>
+              <div className="p-4">
+                <EmptyState title="No operations yet" description="Field operations will show up here once logged." />
+              </div>
             )}
           </div>
         </div>
@@ -113,7 +116,9 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <p className="p-8 text-gray-500 text-center">No spray logs yet.</p>
+              <div className="p-4">
+                <EmptyState title="No spray logs yet" description="Recent sprays will appear here after you log them." />
+              </div>
             )}
           </div>
         </div>
@@ -135,7 +140,9 @@ export default function Dashboard() {
               </div>
             ))
           ) : (
-            <p className="p-8 text-gray-500 text-center">No open tasks — great job!</p>
+            <div className="p-4">
+              <EmptyState title="No open tasks" description="You're all caught up — great job!" />
+            </div>
           )}
         </div>
       </div>
