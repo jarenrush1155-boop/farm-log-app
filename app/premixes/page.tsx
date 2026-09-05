@@ -11,6 +11,7 @@ export default function PremixesPage() {
   const [premixes, setPremixes] = useState<any[]>([]);
   const [chemicals, setChemicals] = useState<any[]>([]);
   const [pin, setPin] = useState('');
+  const [editingPremix, setEditingPremix] = useState<any>(null);
 
   const [newPremix, setNewPremix] = useState({
     name: '',
@@ -49,7 +50,14 @@ export default function PremixesPage() {
     setSelectedChemicals(selectedChemicals.filter((_, i) => i !== index));
   };
 
-  const addPremix = async () => {
+  const resetForm = () => {
+    setNewPremix({ name: '', description: '' });
+    setSelectedChemicals([]);
+    setEditingPremix(null);
+    setPin('');
+  };
+
+  const savePremix = async () => {
     if (!newPremix.name || selectedChemicals.length === 0) {
       alert('Premix name and at least one chemical required');
       return;
@@ -59,7 +67,8 @@ export default function PremixesPage() {
     const { error } = await mutateWithPin({
       pin,
       table: 'premixes',
-      action: 'insert',
+      action: editingPremix ? 'update' : 'insert',
+      id: editingPremix?.id,
       data: {
         name: newPremix.name,
         description: newPremix.description,
@@ -69,12 +78,25 @@ export default function PremixesPage() {
 
     if (error) alert(error.message);
     else {
-      alert('Premix saved!');
-      setNewPremix({ name: '', description: '' });
-      setSelectedChemicals([]);
-      setPin('');
+      alert(editingPremix ? 'Premix updated!' : 'Premix saved!');
+      resetForm();
       fetchPremixes();
     }
+  };
+
+  const editPremix = (pm: any) => {
+    setEditingPremix(pm);
+    setNewPremix({
+      name: pm.name || '',
+      description: pm.description || '',
+    });
+    setSelectedChemicals(
+      (pm.chemicals || []).map((c: any) => ({
+        name: c.name || '',
+        rate: c.rate || '',
+      }))
+    );
+    setPin('');
   };
 
   const deletePremix = async (id: string) => {
@@ -89,7 +111,10 @@ export default function PremixesPage() {
     });
 
     if (error) alert(error.message);
-    else fetchPremixes();
+    else {
+      if (editingPremix?.id === id) resetForm();
+      fetchPremixes();
+    }
   };
 
   return (
@@ -97,7 +122,7 @@ export default function PremixesPage() {
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Manage Premixes</h3>
 
       <div className="card-panel">
-        <h4 className="font-medium mb-4">Create New Premix</h4>
+        <h4 className="font-medium mb-4">{editingPremix ? 'Edit Premix' : 'Create New Premix'}</h4>
 
         <input
           type="text"
@@ -152,9 +177,16 @@ export default function PremixesPage() {
           <PinField value={pin} onChange={setPin} className="form-input" />
         </div>
 
-        <button onClick={addPremix} className="btn-primary">
-          Save Premix
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button onClick={savePremix} className="btn-primary">
+            {editingPremix ? 'Update Premix' : 'Save Premix'}
+          </button>
+          {editingPremix && (
+            <button onClick={resetForm} className="btn-secondary">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <h4 className="font-medium mb-3">Saved Premixes</h4>
@@ -178,9 +210,14 @@ export default function PremixesPage() {
                 </span>
               ))}
             </p>
-            <button onClick={() => deletePremix(pm.id)} className="text-red-600 mt-2 min-h-[44px]">
-              Delete
-            </button>
+            <div className="flex gap-4 mt-2">
+              <button onClick={() => editPremix(pm)} className="text-blue-600 min-h-[44px]">
+                Edit
+              </button>
+              <button onClick={() => deletePremix(pm.id)} className="text-red-600 min-h-[44px]">
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -192,7 +229,7 @@ export default function PremixesPage() {
               <tr>
                 <th className="p-4 text-left">Premix Name</th>
                 <th className="p-4 text-left">Chemicals</th>
-                <th className="p-4 w-24">Actions</th>
+                <th className="p-4 w-36">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -208,6 +245,9 @@ export default function PremixesPage() {
                     ))}
                   </td>
                   <td className="p-4">
+                    <button onClick={() => editPremix(pm)} className="text-blue-600 hover:text-blue-800 min-h-[44px] mr-3">
+                      Edit
+                    </button>
                     <button onClick={() => deletePremix(pm.id)} className="text-red-600 hover:text-red-800 min-h-[44px]">
                       Delete
                     </button>

@@ -10,6 +10,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('all');
   const [pin, setPin] = useState('');
+  const [editingTask, setEditingTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({ title: '', description: '' });
 
   useEffect(() => {
@@ -21,27 +22,47 @@ export default function TasksPage() {
     setTasks(data || []);
   };
 
-  const addTask = async () => {
+  const resetForm = () => {
+    setNewTask({ title: '', description: '' });
+    setEditingTask(null);
+    setPin('');
+  };
+
+  const saveTask = async () => {
     if (!newTask.title) return alert('Task title required');
     if (!pin) return alert('Please enter the PIN to save');
 
     const { error } = await mutateWithPin({
       pin,
       table: 'tasks',
-      action: 'insert',
-      data: {
-        title: newTask.title,
-        description: newTask.description || null,
-        completed: false,
-      },
+      action: editingTask ? 'update' : 'insert',
+      id: editingTask?.id,
+      data: editingTask
+        ? {
+            title: newTask.title,
+            description: newTask.description || null,
+          }
+        : {
+            title: newTask.title,
+            description: newTask.description || null,
+            completed: false,
+          },
     });
 
     if (error) alert(error.message);
     else {
-      setNewTask({ title: '', description: '' });
-      setPin('');
+      resetForm();
       fetchTasks();
     }
+  };
+
+  const editTask = (task: any) => {
+    setEditingTask(task);
+    setNewTask({
+      title: task.title || '',
+      description: task.description || '',
+    });
+    setPin('');
   };
 
   const toggleComplete = async (id: string, completed: boolean) => {
@@ -72,7 +93,10 @@ export default function TasksPage() {
     });
 
     if (error) alert(error.message);
-    else fetchTasks();
+    else {
+      if (editingTask?.id === id) resetForm();
+      fetchTasks();
+    }
   };
 
   const filteredTasks = tasks.filter((task) => {
@@ -86,7 +110,7 @@ export default function TasksPage() {
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Task Manager</h3>
 
       <div className="card-panel">
-        <h4 className="font-medium mb-4">New Task</h4>
+        <h4 className="font-medium mb-4">{editingTask ? 'Edit Task' : 'New Task'}</h4>
         <input
           type="text"
           placeholder="What needs to be done?"
@@ -103,9 +127,16 @@ export default function TasksPage() {
         <div className="mb-3">
           <PinField value={pin} onChange={setPin} className="form-input" />
         </div>
-        <button onClick={addTask} className="btn-primary">
-          Add Task
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button onClick={saveTask} className="btn-primary">
+            {editingTask ? 'Update Task' : 'Add Task'}
+          </button>
+          {editingTask && (
+            <button onClick={resetForm} className="btn-secondary">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 sm:gap-3 mb-5">
@@ -146,9 +177,14 @@ export default function TasksPage() {
                   </p>
                 )}
               </div>
-              <button onClick={() => deleteTask(task.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px] shrink-0">
-                Delete
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <button onClick={() => editTask(task)} className="text-blue-600 hover:text-blue-800 text-sm min-h-[44px]">
+                  Edit
+                </button>
+                <button onClick={() => deleteTask(task.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px]">
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>

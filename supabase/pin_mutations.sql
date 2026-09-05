@@ -1,11 +1,19 @@
 -- PIN-protected mutations for Farm Log
 -- Run this once in the Supabase SQL Editor (Dashboard → SQL → New query).
+-- IMPORTANT: Re-run this entire script in the Supabase SQL editor whenever it
+-- changes. The client also sets id on insert (lib/pin.ts) so production can
+-- recover on deploy before this SQL is re-applied.
 -- Required existing function: public.check_edit_pin(input_pin text) returns boolean
 --
 -- Why this is needed:
 -- Row Level Security blocks direct INSERT/UPDATE/DELETE from the anon key.
 -- set_current_pin cannot authorize a later REST call (connection pooling resets
 -- session settings). Mutations must validate the PIN in the same database call.
+--
+-- INSERT note: jsonb_populate_record fills absent columns with NULL, which
+-- overrides column DEFAULTs (e.g. id gen_random_uuid()). We therefore insert
+-- only keys present in p_data (JSON nulls dropped) and ensure missing id gets
+-- gen_random_uuid().
 
 CREATE OR REPLACE FUNCTION public.mutate_with_pin(
   p_pin text,
@@ -34,6 +42,9 @@ DECLARE
   ];
   result_row jsonb;
   set_list text;
+  payload jsonb;
+  cols text;
+  selects text;
 BEGIN
   IF p_pin IS NULL OR btrim(p_pin) = '' OR NOT public.check_edit_pin(p_pin) THEN
     RAISE EXCEPTION 'Invalid PIN'
@@ -45,14 +56,31 @@ BEGIN
   END IF;
 
   IF p_action = 'insert' THEN
+    -- Drop JSON-null values so they do not override column DEFAULTs.
+    SELECT COALESCE(jsonb_object_agg(key, value), '{}'::jsonb)
+    INTO payload
+    FROM jsonb_each(COALESCE(p_data, '{}'::jsonb))
+    WHERE value IS DISTINCT FROM 'null'::jsonb;
+
+    -- Missing id must use gen_random_uuid() (populate_record would set NULL).
+    IF NOT (payload ? 'id') THEN
+      payload := payload || jsonb_build_object('id', gen_random_uuid());
+    END IF;
+
+    SELECT
+      string_agg(format('%I', key), ', '),
+      string_agg(format('r.%I', key), ', ')
+    INTO cols, selects
+    FROM jsonb_object_keys(payload) AS key;
+
     EXECUTE format(
-      'INSERT INTO public.%I
-       SELECT * FROM jsonb_populate_record(NULL::public.%I, $1)
+      'INSERT INTO public.%I (%s)
+       SELECT %s FROM jsonb_populate_record(NULL::public.%I, $1) AS r
        RETURNING to_jsonb(%I.*)',
-      p_table, p_table, p_table
+      p_table, cols, selects, p_table, p_table
     )
     INTO result_row
-    USING COALESCE(p_data, '{}'::jsonb);
+    USING payload;
 
     RETURN result_row;
 

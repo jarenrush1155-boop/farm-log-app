@@ -10,6 +10,7 @@ import EmptyState from '../../components/EmptyState';
 export default function ChemicalsPage() {
   const [chemicals, setChemicals] = useState<any[]>([]);
   const [pin, setPin] = useState('');
+  const [editingChemical, setEditingChemical] = useState<any>(null);
   const [newChemical, setNewChemical] = useState({
     name: '',
     unit: 'GPA',
@@ -26,14 +27,21 @@ export default function ChemicalsPage() {
     setChemicals(data || []);
   };
 
-  const addChemical = async () => {
+  const resetForm = () => {
+    setNewChemical({ name: '', unit: 'GPA' });
+    setEditingChemical(null);
+    setPin('');
+  };
+
+  const saveChemical = async () => {
     if (!newChemical.name) return alert('Chemical name is required');
     if (!pin) return alert('Please enter the PIN to save');
 
     const { error } = await mutateWithPin({
       pin,
       table: 'chemicals',
-      action: 'insert',
+      action: editingChemical ? 'update' : 'insert',
+      id: editingChemical?.id,
       data: {
         name: newChemical.name,
         unit: newChemical.unit,
@@ -42,10 +50,18 @@ export default function ChemicalsPage() {
 
     if (error) alert(error.message);
     else {
-      setNewChemical({ name: '', unit: 'GPA' });
-      setPin('');
+      resetForm();
       fetchChemicals();
     }
+  };
+
+  const editChemical = (chem: any) => {
+    setEditingChemical(chem);
+    setNewChemical({
+      name: chem.name || '',
+      unit: chem.unit || 'GPA',
+    });
+    setPin('');
   };
 
   const deleteChemical = async (id: string) => {
@@ -60,7 +76,10 @@ export default function ChemicalsPage() {
     });
 
     if (error) alert(error.message);
-    else fetchChemicals();
+    else {
+      if (editingChemical?.id === id) resetForm();
+      fetchChemicals();
+    }
   };
 
   return (
@@ -68,7 +87,7 @@ export default function ChemicalsPage() {
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Manage Chemicals</h3>
 
       <div className="card-panel">
-        <h4 className="font-medium mb-4">Add New Chemical</h4>
+        <h4 className="font-medium mb-4">{editingChemical ? 'Edit Chemical' : 'Add New Chemical'}</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input
             type="text"
@@ -88,9 +107,16 @@ export default function ChemicalsPage() {
 
           <PinField value={pin} onChange={setPin} className="form-input" />
 
-          <button onClick={addChemical} className="btn-primary sm:col-span-2 lg:col-span-4 sm:w-auto sm:justify-self-start">
-            Add Chemical
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 sm:col-span-2 lg:col-span-4">
+            <button onClick={saveChemical} className="btn-primary sm:w-auto">
+              {editingChemical ? 'Update Chemical' : 'Add Chemical'}
+            </button>
+            {editingChemical && (
+              <button onClick={resetForm} className="btn-secondary sm:w-auto">
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -108,9 +134,14 @@ export default function ChemicalsPage() {
                   <p className="font-medium">{chem.name}</p>
                   <p className="text-sm text-gray-600">{chem.unit}</p>
                 </div>
-                <button onClick={() => deleteChemical(chem.id)} className="text-red-600 min-h-[44px] px-2">
-                  Delete
-                </button>
+                <div className="flex gap-3 shrink-0">
+                  <button onClick={() => editChemical(chem)} className="text-blue-600 min-h-[44px] px-2">
+                    Edit
+                  </button>
+                  <button onClick={() => deleteChemical(chem.id)} className="text-red-600 min-h-[44px] px-2">
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -122,7 +153,7 @@ export default function ChemicalsPage() {
                   <tr>
                     <th className="p-4 text-left">Chemical Name</th>
                     <th className="p-4">Unit</th>
-                    <th className="p-4 w-24">Actions</th>
+                    <th className="p-4 w-36">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -131,6 +162,9 @@ export default function ChemicalsPage() {
                       <td className="p-4 font-medium">{chem.name}</td>
                       <td className="p-4 text-center">{chem.unit}</td>
                       <td className="p-4 text-center">
+                        <button onClick={() => editChemical(chem)} className="text-blue-600 hover:text-blue-800 text-sm min-h-[44px] mr-3">
+                          Edit
+                        </button>
                         <button onClick={() => deleteChemical(chem.id)} className="text-red-600 hover:text-red-800 text-sm min-h-[44px]">
                           Delete
                         </button>
