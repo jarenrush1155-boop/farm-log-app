@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptForPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 export default function TasksPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [tasks, setTasks] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('all');
-  const [pin, setPin] = useState('');
   const [editingTask, setEditingTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({ title: '', description: '' });
 
@@ -27,7 +27,6 @@ export default function TasksPage() {
   const resetForm = () => {
     setNewTask({ title: '', description: '' });
     setEditingTask(null);
-    setPin('');
   };
 
   const saveTask = async () => {
@@ -35,10 +34,12 @@ export default function TasksPage() {
       error('Task title required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+
+    const pin = await requestPin({
+      title: editingTask ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingTask ? 'Confirm PIN to update this task.' : 'Confirm PIN to add this task.',
+    });
+    if (!pin) return;
 
     const { error: mutateError } = await mutateWithPin({
       pin,
@@ -71,11 +72,13 @@ export default function TasksPage() {
       title: task.title || '',
       description: task.description || '',
     });
-    setPin('');
   };
 
   const toggleComplete = async (id: string, completed: boolean) => {
-    const enteredPin = promptForPin(completed ? 'Enter PIN to mark complete:' : 'Enter PIN to reopen task:');
+    const enteredPin = await requestPin({
+      title: completed ? 'Enter PIN to mark complete' : 'Enter PIN to reopen task',
+      message: completed ? 'Confirm PIN to mark this task complete.' : 'Confirm PIN to reopen this task.',
+    });
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -94,7 +97,7 @@ export default function TasksPage() {
   };
 
   const deleteTask = async (id: string) => {
-    const enteredPin = promptPinForDelete('this task');
+    const enteredPin = await requestPinForDelete('this task');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -137,9 +140,6 @@ export default function TasksPage() {
           onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
           className="form-input mb-3 h-20"
         />
-        <div className="mb-3">
-          <PinField value={pin} onChange={setPin} className="form-input" />
-        </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button onClick={saveTask} className="btn-primary">
             {editingTask ? 'Update Task' : 'Add Task'}
