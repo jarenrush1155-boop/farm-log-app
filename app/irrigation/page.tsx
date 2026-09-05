@@ -20,6 +20,8 @@ export default function IrrigationPage() {
   const [editingReading, setEditingReading] = useState<any>(null);
   const [editingApplication, setEditingApplication] = useState<any>(null);
 
+  const summaryYear = new Date().getFullYear();
+
   useEffect(() => {
     fetchFields();
     fetchReadings();
@@ -145,15 +147,16 @@ export default function IrrigationPage() {
     setApplicationPin('');
   };
 
-  const getCurrentYearReadings = (fieldId: string) => {
-    const currentYear = new Date().getFullYear();
+  const getYearReadings = (fieldId: string) => {
     return readings
-      .filter((r) => r.field_id === fieldId && new Date(r.date).getFullYear() === currentYear)
+      .filter((r) => r.field_id === fieldId && new Date(r.date).getFullYear() === summaryYear)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
   const totalInchesApplied = (fieldId: string) => {
-    return applications.filter((a) => a.field_id === fieldId).reduce((sum, a) => sum + (a.inches_applied || 0), 0);
+    return applications
+      .filter((a) => a.field_id === fieldId && new Date(a.date).getFullYear() === summaryYear)
+      .reduce((sum, a) => sum + (a.inches_applied || 0), 0);
   };
 
   return (
@@ -236,7 +239,7 @@ export default function IrrigationPage() {
         </div>
       </div>
 
-      <h4 className="font-medium mt-8 sm:mt-10 mb-3">2026 Irrigation Summary (Inches Depth)</h4>
+      <h4 className="font-medium mt-8 sm:mt-10 mb-3">{summaryYear} Irrigation Summary (Inches Depth)</h4>
       {fields.length === 0 ? (
         <div className="mb-8 sm:mb-10">
           <EmptyState
@@ -261,7 +264,7 @@ export default function IrrigationPage() {
             <tbody>
               {fields.map((field) => {
                 const acres = field.acres || 0;
-                const yearReadings = getCurrentYearReadings(field.id);
+                const yearReadings = getYearReadings(field.id);
                 const first = yearReadings[0]?.meter_reading || 0;
                 const latest = yearReadings[yearReadings.length - 1]?.meter_reading || first;
                 const meterDiffAF = latest - first;
