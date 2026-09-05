@@ -6,6 +6,7 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 type Field = {
   id: string;
@@ -17,6 +18,7 @@ type Field = {
 };
 
 export default function FieldsPage() {
+  const { success, error } = useToast();
   const [fields, setFields] = useState<Field[]>([]);
   const [editingField, setEditingField] = useState<Field | null>(null);
   const [pin, setPin] = useState('');
@@ -45,11 +47,11 @@ export default function FieldsPage() {
 
   const saveField = async () => {
     if (!newField.name || !newField.acres) {
-      alert('Field name and acres are required');
+      error('Field name and acres are required');
       return;
     }
     if (!pin) {
-      alert('Please enter the PIN to save');
+      error('Please enter the PIN to save');
       return;
     }
 
@@ -61,7 +63,7 @@ export default function FieldsPage() {
       notes: newField.notes.trim() || null,
     };
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'fields',
       action: editingField ? 'update' : 'insert',
@@ -69,10 +71,10 @@ export default function FieldsPage() {
       data: payload,
     });
 
-    if (error) {
-      alert('Error saving field: ' + error.message);
+    if (mutateError) {
+      error('Error saving field: ' + mutateError.message);
     } else {
-      alert(editingField ? 'Field updated!' : 'Field added!');
+      success(editingField ? 'Field updated!' : 'Field added!');
       resetForm();
       fetchFields();
     }
@@ -95,15 +97,18 @@ export default function FieldsPage() {
     const enteredPin = promptPinForDelete('this field');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'fields',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
-    else fetchFields();
+    if (mutateError) error(mutateError.message);
+    else {
+      success('Field deleted');
+      fetchFields();
+    }
   };
 
   return (
