@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 export default function PremixesPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [premixes, setPremixes] = useState<any[]>([]);
   const [chemicals, setChemicals] = useState<any[]>([]);
-  const [pin, setPin] = useState('');
   const [editingPremix, setEditingPremix] = useState<any>(null);
 
   const [newPremix, setNewPremix] = useState({
@@ -56,7 +56,6 @@ export default function PremixesPage() {
     setNewPremix({ name: '', description: '' });
     setSelectedChemicals([]);
     setEditingPremix(null);
-    setPin('');
   };
 
   const savePremix = async () => {
@@ -64,10 +63,12 @@ export default function PremixesPage() {
       error('Premix name and at least one chemical required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+
+    const pin = await requestPin({
+      title: editingPremix ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingPremix ? 'Confirm PIN to update this premix.' : 'Confirm PIN to save this premix.',
+    });
+    if (!pin) return;
 
     const { error: mutateError } = await mutateWithPin({
       pin,
@@ -101,11 +102,10 @@ export default function PremixesPage() {
         rate: c.rate || '',
       }))
     );
-    setPin('');
   };
 
   const deletePremix = async (id: string) => {
-    const enteredPin = promptPinForDelete('this premix');
+    const enteredPin = await requestPinForDelete('this premix');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -177,10 +177,6 @@ export default function PremixesPage() {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="mb-4">
-          <PinField value={pin} onChange={setPin} className="form-input" />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
