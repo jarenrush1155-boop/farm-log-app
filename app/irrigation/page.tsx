@@ -6,8 +6,10 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 export default function IrrigationPage() {
+  const { success, error } = useToast();
   const [fields, setFields] = useState<any[]>([]);
   const [readings, setReadings] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
@@ -44,8 +46,14 @@ export default function IrrigationPage() {
   };
 
   const saveReading = async () => {
-    if (!newReading.field_id || !newReading.acre_feet) return alert('Field and Acre-Feet required');
-    if (!readingPin) return alert('Please enter the PIN to save');
+    if (!newReading.field_id || !newReading.acre_feet) {
+      error('Field and Acre-Feet required');
+      return;
+    }
+    if (!readingPin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const payload = {
       field_id: newReading.field_id,
@@ -53,7 +61,7 @@ export default function IrrigationPage() {
       meter_reading: parseFloat(newReading.acre_feet),
     };
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: readingPin,
       table: 'irrigation_readings',
       action: editingReading ? 'update' : 'insert',
@@ -61,8 +69,9 @@ export default function IrrigationPage() {
       data: payload,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success(editingReading ? 'Reading updated!' : 'Reading added!');
       setEditingReading(null);
       setNewReading({ field_id: '', date: '', acre_feet: '' });
       setReadingPin('');
@@ -71,8 +80,14 @@ export default function IrrigationPage() {
   };
 
   const saveApplication = async () => {
-    if (!newApplication.field_id || !newApplication.inches_applied) return alert('Field and Inches required');
-    if (!applicationPin) return alert('Please enter the PIN to save');
+    if (!newApplication.field_id || !newApplication.inches_applied) {
+      error('Field and Inches required');
+      return;
+    }
+    if (!applicationPin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const payload = {
       field_id: newApplication.field_id,
@@ -80,7 +95,7 @@ export default function IrrigationPage() {
       inches_applied: parseFloat(newApplication.inches_applied),
     };
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: applicationPin,
       table: 'irrigation_applications',
       action: editingApplication ? 'update' : 'insert',
@@ -88,8 +103,9 @@ export default function IrrigationPage() {
       data: payload,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success(editingApplication ? 'Application updated!' : 'Application added!');
       setEditingApplication(null);
       setNewApplication({ field_id: '', date: '', inches_applied: '' });
       setApplicationPin('');
@@ -101,30 +117,36 @@ export default function IrrigationPage() {
     const enteredPin = promptPinForDelete('this meter reading');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'irrigation_readings',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
-    else fetchReadings();
+    if (mutateError) error(mutateError.message);
+    else {
+      success('Reading deleted');
+      fetchReadings();
+    }
   };
 
   const deleteApplication = async (id: string) => {
     const enteredPin = promptPinForDelete('this application');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'irrigation_applications',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
-    else fetchApplications();
+    if (mutateError) error(mutateError.message);
+    else {
+      success('Application deleted');
+      fetchApplications();
+    }
   };
 
   const editReading = (reading: any) => {
