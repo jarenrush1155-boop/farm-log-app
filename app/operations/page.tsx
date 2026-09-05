@@ -6,6 +6,18 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
 
+const SHARED_FORM_KEYS = ['field_id', 'date', 'acres', 'notes'] as const;
+
+function preserveSharedFields(formData: any) {
+  const shared: Record<string, any> = {};
+  for (const key of SHARED_FORM_KEYS) {
+    if (formData[key] !== undefined && formData[key] !== '') {
+      shared[key] = formData[key];
+    }
+  }
+  return shared;
+}
+
 export default function OperationsPage() {
   const [operations, setOperations] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
@@ -215,7 +227,7 @@ export default function OperationsPage() {
           value={opType}
           onChange={(e) => {
             setOpType(e.target.value);
-            setFormData({});
+            setFormData(preserveSharedFields(formData));
           }}
           className="form-input mb-5"
         >
