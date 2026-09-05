@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 const SHARED_FORM_KEYS = ['field_id', 'date', 'acres', 'notes'] as const;
 
@@ -21,12 +21,12 @@ function preserveSharedFields(formData: any) {
 
 export default function OperationsPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [operations, setOperations] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
 
   const [opType, setOpType] = useState('tillage');
   const [formData, setFormData] = useState<any>({});
-  const [pin, setPin] = useState('');
   const [editingOp, setEditingOp] = useState<any>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -54,10 +54,11 @@ export default function OperationsPage() {
       error('Please select a field');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const pin = await requestPin({
+      title: editingOp ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingOp ? 'Confirm PIN to update this operation.' : 'Confirm PIN to save this operation.',
+    });
+    if (!pin) return;
 
     const payload = {
       field_id: formData.field_id,
@@ -129,7 +130,6 @@ export default function OperationsPage() {
 
   const resetForm = () => {
     setFormData({});
-    setPin('');
     setEditingOp(null);
     setOpType('tillage');
   };
@@ -144,11 +144,10 @@ export default function OperationsPage() {
       acres: op.acres,
       notes: op.notes,
     });
-    setPin('');
   };
 
   const deleteOperation = async (id: string) => {
-    const enteredPin = promptPinForDelete('this operation');
+    const enteredPin = await requestPinForDelete('this operation');
     if (!enteredPin) return;
 
     const { error: rpcError } = await supabase.rpc('delete_operation_with_pin', {
@@ -267,8 +266,6 @@ export default function OperationsPage() {
           {renderDynamicFields()}
 
           <textarea placeholder="Notes (include equipment used here)" value={formData.notes || ''} onChange={(e) => updateForm('notes', e.target.value)} className="form-input h-24" />
-
-          <PinField value={pin} onChange={setPin} className="form-input" />
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
