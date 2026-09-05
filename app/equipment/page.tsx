@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 type Equipment = {
   id: string;
@@ -46,10 +46,10 @@ function formatHours(value: number | null | undefined) {
 
 export default function EquipmentPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Equipment | null>(null);
-  const [pin, setPin] = useState('');
   const [newEquip, setNewEquip] = useState(emptyForm);
 
   useEffect(() => {
@@ -66,10 +66,11 @@ export default function EquipmentPage() {
       error('Name is required');
       return;
     }
-    if (!pin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const pin = await requestPin({
+      title: editing ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editing ? 'Confirm PIN to update this equipment.' : 'Confirm PIN to add this equipment.',
+    });
+    if (!pin) return;
 
     const initialHours = newEquip.initial_hours ? parseFloat(newEquip.initial_hours) : null;
     const separatorHours = newEquip.separator_hours ? parseFloat(newEquip.separator_hours) : null;
@@ -130,7 +131,6 @@ export default function EquipmentPage() {
   const resetForm = () => {
     setNewEquip(emptyForm);
     setEditing(null);
-    setPin('');
   };
 
   const editEquipment = (item: Equipment) => {
@@ -147,12 +147,11 @@ export default function EquipmentPage() {
       width: item.width?.toString() || '',
       notes: item.notes || '',
     });
-    setPin('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteEquipment = async (id: string) => {
-    const enteredPin = promptPinForDelete('this equipment');
+    const enteredPin = await requestPinForDelete('this equipment');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -237,10 +236,6 @@ export default function EquipmentPage() {
           )}
 
           <textarea placeholder="Notes" value={newEquip.notes} onChange={(e) => setNewEquip({ ...newEquip, notes: e.target.value })} className="form-input sm:col-span-2" rows={2} />
-
-          <div className="sm:col-span-2">
-            <PinField value={pin} onChange={setPin} className="form-input" />
-          </div>
         </div>
 
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
