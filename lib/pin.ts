@@ -43,10 +43,17 @@ export async function mutateWithPin(options: {
   data?: Record<string, unknown>;
   id?: string | null;
 }): Promise<MutateResult> {
-  const { pin, table, action, data = {}, id = null } = options;
+  const { pin, table, action, id = null } = options;
+  let data = options.data ?? {};
 
   if (!pin.trim()) {
     return { data: null, error: { message: 'Please enter the PIN' } };
+  }
+
+  // jsonb_populate_record sets missing id to null and overrides gen_random_uuid().
+  // Client-side id unblocks inserts on deploy without waiting for SQL re-apply.
+  if (action === 'insert' && data.id == null) {
+    data = { ...data, id: crypto.randomUUID() };
   }
 
   const { data: result, error } = await supabase.rpc('mutate_with_pin', {
