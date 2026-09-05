@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
-import PinField from '../../components/PinField';
+import { mutateWithPin } from '../../lib/pin';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
 import { useToast } from '../../components/ToastProvider';
+import { usePin } from '../../components/PinProvider';
 
 export default function IrrigationPage() {
   const { success, error } = useToast();
+  const { requestPin, requestPinForDelete } = usePin();
   const [fields, setFields] = useState<any[]>([]);
   const [readings, setReadings] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
-  const [readingPin, setReadingPin] = useState('');
-  const [applicationPin, setApplicationPin] = useState('');
 
   const [newReading, setNewReading] = useState({ field_id: '', date: '', acre_feet: '' });
   const [newApplication, setNewApplication] = useState({ field_id: '', date: '', inches_applied: '' });
@@ -50,10 +49,11 @@ export default function IrrigationPage() {
       error('Field and Acre-Feet required');
       return;
     }
-    if (!readingPin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const readingPin = await requestPin({
+      title: editingReading ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingReading ? 'Confirm PIN to update this meter reading.' : 'Confirm PIN to add this meter reading.',
+    });
+    if (!readingPin) return;
 
     const payload = {
       field_id: newReading.field_id,
@@ -74,7 +74,6 @@ export default function IrrigationPage() {
       success(editingReading ? 'Reading updated!' : 'Reading added!');
       setEditingReading(null);
       setNewReading({ field_id: '', date: '', acre_feet: '' });
-      setReadingPin('');
       fetchReadings();
     }
   };
@@ -84,10 +83,11 @@ export default function IrrigationPage() {
       error('Field and Inches required');
       return;
     }
-    if (!applicationPin) {
-      error('Please enter the PIN to save');
-      return;
-    }
+    const applicationPin = await requestPin({
+      title: editingApplication ? 'Enter PIN to update' : 'Enter PIN to save',
+      message: editingApplication ? 'Confirm PIN to update this application.' : 'Confirm PIN to add this application.',
+    });
+    if (!applicationPin) return;
 
     const payload = {
       field_id: newApplication.field_id,
@@ -108,13 +108,12 @@ export default function IrrigationPage() {
       success(editingApplication ? 'Application updated!' : 'Application added!');
       setEditingApplication(null);
       setNewApplication({ field_id: '', date: '', inches_applied: '' });
-      setApplicationPin('');
       fetchApplications();
     }
   };
 
   const deleteReading = async (id: string) => {
-    const enteredPin = promptPinForDelete('this meter reading');
+    const enteredPin = await requestPinForDelete('this meter reading');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -132,7 +131,7 @@ export default function IrrigationPage() {
   };
 
   const deleteApplication = async (id: string) => {
-    const enteredPin = promptPinForDelete('this application');
+    const enteredPin = await requestPinForDelete('this application');
     if (!enteredPin) return;
 
     const { error: mutateError } = await mutateWithPin({
@@ -156,7 +155,6 @@ export default function IrrigationPage() {
       date: reading.date,
       acre_feet: reading.meter_reading.toString(),
     });
-    setReadingPin('');
   };
 
   const editApplication = (app: any) => {
@@ -166,7 +164,6 @@ export default function IrrigationPage() {
       date: app.date,
       inches_applied: app.inches_applied.toString(),
     });
-    setApplicationPin('');
   };
 
   const getYearReadings = (fieldId: string) => {
@@ -199,9 +196,6 @@ export default function IrrigationPage() {
             </select>
             <input type="date" value={newReading.date} onChange={(e) => setNewReading({ ...newReading, date: e.target.value })} className="form-input mb-3" />
             <input type="number" step="0.01" inputMode="decimal" placeholder="Acre-Feet" value={newReading.acre_feet} onChange={(e) => setNewReading({ ...newReading, acre_feet: e.target.value })} className="form-input mb-3" />
-            <div className="mb-3">
-              <PinField value={readingPin} onChange={setReadingPin} className="form-input" />
-            </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={saveReading} className="btn-primary">
@@ -212,7 +206,6 @@ export default function IrrigationPage() {
                   onClick={() => {
                     setEditingReading(null);
                     setNewReading({ field_id: '', date: '', acre_feet: '' });
-                    setReadingPin('');
                   }}
                   className="btn-secondary"
                 >
@@ -236,9 +229,6 @@ export default function IrrigationPage() {
             </select>
             <input type="date" value={newApplication.date} onChange={(e) => setNewApplication({ ...newApplication, date: e.target.value })} className="form-input mb-3" />
             <input type="number" step="0.01" inputMode="decimal" placeholder="Inches Applied" value={newApplication.inches_applied} onChange={(e) => setNewApplication({ ...newApplication, inches_applied: e.target.value })} className="form-input mb-3" />
-            <div className="mb-3">
-              <PinField value={applicationPin} onChange={setApplicationPin} className="form-input" />
-            </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={saveApplication} className="btn-primary">
@@ -249,7 +239,6 @@ export default function IrrigationPage() {
                   onClick={() => {
                     setEditingApplication(null);
                     setNewApplication({ field_id: '', date: '', inches_applied: '' });
-                    setApplicationPin('');
                   }}
                   className="btn-secondary"
                 >
