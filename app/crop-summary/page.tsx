@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import EmptyState from '../../components/EmptyState';
 
 export default function CropSummaryPage() {
   const [fields, setFields] = useState<any[]>([]);
@@ -151,6 +152,12 @@ export default function CropSummaryPage() {
         </select>
       </div>
 
+      {fields.length === 0 ? (
+        <EmptyState
+          title="No crop summary data yet"
+          description="Add fields first, then log operations and spray activity. Summaries will appear here by year."
+        />
+      ) : (
       <div className="space-y-3 sm:space-y-4">
         {fields.map(field => {
           const activities = getFieldActivities(field.id);
@@ -225,6 +232,7 @@ export default function CropSummaryPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
