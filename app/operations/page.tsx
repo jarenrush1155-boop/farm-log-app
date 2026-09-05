@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
+import EmptyState from '../../components/EmptyState';
 
 export default function OperationsPage() {
   const [operations, setOperations] = useState<any[]>([]);
@@ -50,7 +51,6 @@ export default function OperationsPage() {
     let errorMessage: string | null = null;
 
     if (editingOp) {
-      // Prefer existing RPC if present; fall back to generic mutate_with_pin
       const { error: updateError } = await supabase.rpc('update_operation_with_pin', {
         p_id: editingOp.id,
         p_field_id: payload.field_id,
@@ -131,7 +131,6 @@ export default function OperationsPage() {
     const enteredPin = promptPinForDelete('this operation');
     if (!enteredPin) return;
 
-    // Prefer dedicated RPC; fall back to generic mutate_with_pin
     const { error: rpcError } = await supabase.rpc('delete_operation_with_pin', {
       p_id: id,
       p_pin: enteredPin,
@@ -262,6 +261,12 @@ export default function OperationsPage() {
       </div>
 
       <h4 className="font-medium mb-4">Recent Operations</h4>
+      {operations.length === 0 ? (
+        <EmptyState
+          title="No operations yet"
+          description="Log tillage, planting, harvest, and other field work using the form above."
+        />
+      ) : (
       <div className="space-y-3">
         {operations.map((op) => {
           const field = fields.find((f) => f.id === op.field_id);
@@ -363,6 +368,7 @@ export default function OperationsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
