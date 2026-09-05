@@ -6,6 +6,21 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
 
+function parseChemicalMix(mix: string | null | undefined): Array<{ name: string; rate: string }> {
+  if (!mix || !mix.trim()) return [];
+  return mix
+    .split(', ')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const parts = item.split(' @ ');
+      return {
+        name: parts[0] || '',
+        rate: parts.slice(1).join(' @ ') || '',
+      };
+    });
+}
+
 export default function SprayLogsPage() {
   const [sprayLogs, setSprayLogs] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
@@ -144,7 +159,7 @@ export default function SprayLogsPage() {
       wind_direction: log.wind_direction,
       wind_speed: log.wind_speed?.toString() || '',
       notes: log.notes || '',
-      chemicals: [],
+      chemicals: parseChemicalMix(log.chemical_mix),
     });
     setPin('');
   };
