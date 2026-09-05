@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
+import EmptyState from '../../components/EmptyState';
 
 export default function SprayLogsPage() {
   const [sprayLogs, setSprayLogs] = useState<any[]>([]);
@@ -249,6 +250,12 @@ export default function SprayLogsPage() {
       </div>
 
       <h4 className="font-medium mb-4">Recent Spray Logs</h4>
+      {sprayLogs.length === 0 ? (
+        <EmptyState
+          title="No spray logs yet"
+          description="Record chemical applications above. Premixes can speed up entry."
+        />
+      ) : (
       <div className="space-y-3">
         {sprayLogs.map((log) => {
           const isExpanded = expanded.has(log.id);
@@ -343,6 +350,7 @@ export default function SprayLogsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
