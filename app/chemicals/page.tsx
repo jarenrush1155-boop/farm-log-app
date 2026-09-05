@@ -6,8 +6,10 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 export default function ChemicalsPage() {
+  const { success, error } = useToast();
   const [chemicals, setChemicals] = useState<any[]>([]);
   const [pin, setPin] = useState('');
   const [editingChemical, setEditingChemical] = useState<any>(null);
@@ -34,10 +36,16 @@ export default function ChemicalsPage() {
   };
 
   const saveChemical = async () => {
-    if (!newChemical.name) return alert('Chemical name is required');
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!newChemical.name) {
+      error('Chemical name is required');
+      return;
+    }
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'chemicals',
       action: editingChemical ? 'update' : 'insert',
@@ -48,8 +56,9 @@ export default function ChemicalsPage() {
       },
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success(editingChemical ? 'Chemical updated!' : 'Chemical added!');
       resetForm();
       fetchChemicals();
     }
@@ -68,15 +77,16 @@ export default function ChemicalsPage() {
     const enteredPin = promptPinForDelete('this chemical');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'chemicals',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success('Chemical deleted');
       if (editingChemical?.id === id) resetForm();
       fetchChemicals();
     }

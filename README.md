@@ -1,37 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JLM Farm Logs
 
-## Getting Started
+Agriculture record-keeping app for fields, equipment, maintenance, field operations, spray logs, chemicals, premixes, irrigation, crop summaries, and tasks.
 
-First, run the development server:
+**Live:** [jlmfarmlogs.vercel.app](https://jlmfarmlogs.vercel.app) · [farm-log-app.vercel.app](https://farm-log-app.vercel.app)
+
+## Stack
+
+- **Next.js** (App Router)
+- **Supabase** (Postgres + RLS + RPC)
+- **Tailwind CSS**
+- **Vercel** (deploys from GitHub `main`)
+
+## Local setup
+
+```bash
+npm install
+```
+
+Create `.env.local` with:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Writes are gated by a shared edit PIN. Apply SQL in the Supabase SQL editor:
 
-## Learn More
+1. **`supabase/pin_mutations.sql`** — `check_edit_pin` + `mutate_with_pin` (required)
+2. **`supabase/equipment_hours.sql`** — hour-meter recompute helpers/triggers (present in repo; apply if equipment hours are used)
 
-To learn more about Next.js, take a look at the following resources:
+RLS blocks direct client writes. All inserts/updates/deletes go through `mutate_with_pin` (and a few operation-specific RPCs with the same PIN check). The PIN is **not** stored in app code; it lives in the database and is verified server-side.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Helpers: `lib/pin.ts` (`verifyPin`, `mutateWithPin`, `promptForPin`, `promptPinForDelete`).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## PIN
 
-## Deploy on Vercel
+- Forms include a PIN field for save/edit.
+- Deletes use confirm + PIN prompt (`promptPinForDelete`).
+- Wrong/missing PIN → mutation fails; UI shows a toast error.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# farm-log-app" 
+Vercel project is linked to this GitHub repo. Pushes to **`main`** deploy automatically. Set the same `NEXT_PUBLIC_SUPABASE_*` env vars in the Vercel project settings.
+
+## Page map
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Dashboard — acres, counts, recent ops/sprays/tasks |
+| `/fields` | Field CRUD (name, acres, irrigated/dryland) |
+| `/equipment` | Equipment CRUD + hour meters |
+| `/maintenance` | Maintenance logs (updates equipment hours) |
+| `/operations` | Field ops (tillage, planting, strip till, harvest, etc.) |
+| `/spray` | Spray logs + premix quick-select |
+| `/chemicals` | Chemical catalog |
+| `/premixes` | Saved chemical mixes for spray entry |
+| `/irrigation` | Meter readings (AF) + sprinkler inches + yearly summary |
+| `/crop-summary` | Per-field yearly activity / print report |
+| `/tasks` | Simple task list with complete toggle |
+
+## Scripts
+
+- `npm run dev` — local dev server
+- `npm run build` — production build
+- `npm run lint` — ESLint

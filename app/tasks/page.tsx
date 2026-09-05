@@ -5,8 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptForPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 export default function TasksPage() {
+  const { success, error } = useToast();
   const [tasks, setTasks] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('all');
   const [pin, setPin] = useState('');
@@ -29,10 +31,16 @@ export default function TasksPage() {
   };
 
   const saveTask = async () => {
-    if (!newTask.title) return alert('Task title required');
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!newTask.title) {
+      error('Task title required');
+      return;
+    }
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'tasks',
       action: editingTask ? 'update' : 'insert',
@@ -49,8 +57,9 @@ export default function TasksPage() {
           },
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success(editingTask ? 'Task updated!' : 'Task added!');
       resetForm();
       fetchTasks();
     }
@@ -69,7 +78,7 @@ export default function TasksPage() {
     const enteredPin = promptForPin(completed ? 'Enter PIN to mark complete:' : 'Enter PIN to reopen task:');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'tasks',
       action: 'update',
@@ -77,23 +86,27 @@ export default function TasksPage() {
       data: { completed },
     });
 
-    if (error) alert(error.message);
-    else fetchTasks();
+    if (mutateError) error(mutateError.message);
+    else {
+      success(completed ? 'Task marked complete' : 'Task reopened');
+      fetchTasks();
+    }
   };
 
   const deleteTask = async (id: string) => {
     const enteredPin = promptPinForDelete('this task');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'tasks',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success('Task deleted');
       if (editingTask?.id === id) resetForm();
       fetchTasks();
     }

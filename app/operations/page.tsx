@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 const SHARED_FORM_KEYS = ['field_id', 'date', 'acres', 'notes'] as const;
 
@@ -19,6 +20,7 @@ function preserveSharedFields(formData: any) {
 }
 
 export default function OperationsPage() {
+  const { success, error } = useToast();
   const [operations, setOperations] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
 
@@ -48,8 +50,14 @@ export default function OperationsPage() {
   };
 
   const saveOperation = async () => {
-    if (!formData.field_id) return alert('Please select a field');
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!formData.field_id) {
+      error('Please select a field');
+      return;
+    }
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const payload = {
       field_id: formData.field_id,
@@ -111,9 +119,9 @@ export default function OperationsPage() {
     }
 
     if (errorMessage) {
-      alert('Error: ' + errorMessage);
+      error('Error: ' + errorMessage);
     } else {
-      alert(editingOp ? 'Operation updated!' : 'Operation saved!');
+      success(editingOp ? 'Operation updated!' : 'Operation saved!');
       resetForm();
       fetchOperations();
     }
@@ -159,8 +167,11 @@ export default function OperationsPage() {
       errorMessage = fallback.error?.message ?? null;
     }
 
-    if (errorMessage) alert('Error: ' + errorMessage);
-    else fetchOperations();
+    if (errorMessage) error('Error: ' + errorMessage);
+    else {
+      success('Operation deleted');
+      fetchOperations();
+    }
   };
 
   const toggleExpand = (id: string) => {

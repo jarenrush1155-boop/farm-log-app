@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 export default function CropSummaryPage() {
+  const { error } = useToast();
   const [fields, setFields] = useState<any[]>([]);
   const [operations, setOperations] = useState<any[]>([]);
   const [sprayLogs, setSprayLogs] = useState<any[]>([]);
@@ -76,7 +78,10 @@ export default function CropSummaryPage() {
     const yieldVal = harvest?.details?.yield || harvest?.yield || '—';
 
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return alert("Please allow popups");
+    if (!printWindow) {
+      error('Please allow popups');
+      return;
+    }
 
     let html = `
       <html><head><title>${field.name} Report - ${selectedYear}</title>

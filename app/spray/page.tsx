@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 function parseChemicalMix(mix: string | null | undefined): Array<{ name: string; rate: string }> {
   if (!mix || !mix.trim()) return [];
@@ -22,6 +23,7 @@ function parseChemicalMix(mix: string | null | undefined): Array<{ name: string;
 }
 
 export default function SprayLogsPage() {
+  const { success, error } = useToast();
   const [sprayLogs, setSprayLogs] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
   const [premixes, setPremixes] = useState<any[]>([]);
@@ -100,10 +102,13 @@ export default function SprayLogsPage() {
 
   const saveSprayLog = async () => {
     if (!newSpray.field_id || newSpray.chemicals.length === 0) {
-      alert('Field and at least one chemical required');
+      error('Field and at least one chemical required');
       return;
     }
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const chemicalMix = newSpray.chemicals.map((c) => `${c.name} @ ${c.rate}`).join(', ');
 
@@ -118,7 +123,7 @@ export default function SprayLogsPage() {
       notes: newSpray.notes || null,
     };
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'spray_logs',
       action: editingLog ? 'update' : 'insert',
@@ -126,9 +131,9 @@ export default function SprayLogsPage() {
       data: payload,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
-      alert(editingLog ? 'Spray log updated!' : 'Spray log saved!');
+      success(editingLog ? 'Spray log updated!' : 'Spray log saved!');
       resetForm();
       fetchSprayLogs();
     }
@@ -168,15 +173,18 @@ export default function SprayLogsPage() {
     const enteredPin = promptPinForDelete('this spray log');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'spray_logs',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
-    else fetchSprayLogs();
+    if (mutateError) error(mutateError.message);
+    else {
+      success('Spray log deleted');
+      fetchSprayLogs();
+    }
   };
 
   const toggleExpand = (id: string) => {

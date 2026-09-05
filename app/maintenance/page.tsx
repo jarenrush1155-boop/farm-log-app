@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 type EquipmentOption = {
   id: string;
@@ -16,6 +17,7 @@ type EquipmentOption = {
 };
 
 export default function MaintenancePage() {
+  const { success, error } = useToast();
   const [equipment, setEquipment] = useState<EquipmentOption[]>([]);
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -63,10 +65,13 @@ export default function MaintenancePage() {
 
   const saveMaintenance = async () => {
     if (!newLog.equipment_id || !newLog.work_done) {
-      alert('Please select equipment and describe the work');
+      error('Please select equipment and describe the work');
       return;
     }
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const hours = newLog.hours ? parseFloat(newLog.hours) : null;
     const separatorHours = newLog.separator_hours ? parseFloat(newLog.separator_hours) : null;
@@ -81,7 +86,7 @@ export default function MaintenancePage() {
       notes: newLog.notes || null,
     };
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'maintenance_logs',
       action: editingLog ? 'update' : 'insert',
@@ -89,8 +94,8 @@ export default function MaintenancePage() {
       data: payload,
     });
 
-    if (error) {
-      alert('Error: ' + error.message);
+    if (mutateError) {
+      error('Error: ' + mutateError.message);
       return;
     }
 
@@ -102,7 +107,7 @@ export default function MaintenancePage() {
       });
     }
 
-    alert(editingLog ? 'Maintenance updated!' : 'Maintenance log saved!');
+    success(editingLog ? 'Maintenance updated!' : 'Maintenance log saved!');
     resetForm();
     fetchMaintenance();
     fetchEquipment();
@@ -132,18 +137,19 @@ export default function MaintenancePage() {
     const enteredPin = promptPinForDelete('this maintenance log');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'maintenance_logs',
       action: 'delete',
       id,
     });
 
-    if (error) {
-      alert(error.message);
+    if (mutateError) {
+      error(mutateError.message);
       return;
     }
 
+    success('Maintenance log deleted');
     if (equipmentId) {
       await supabase.rpc('recompute_equipment_hours', { p_equipment_id: equipmentId });
     }
