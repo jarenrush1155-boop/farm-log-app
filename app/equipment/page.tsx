@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 type Equipment = {
   id: string;
@@ -44,6 +45,7 @@ function formatHours(value: number | null | undefined) {
 }
 
 export default function EquipmentPage() {
+  const { success, error } = useToast();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Equipment | null>(null);
@@ -60,8 +62,14 @@ export default function EquipmentPage() {
   };
 
   const saveEquipment = async () => {
-    if (!newEquip.name) return alert('Name is required');
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!newEquip.name) {
+      error('Name is required');
+      return;
+    }
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
     const initialHours = newEquip.initial_hours ? parseFloat(newEquip.initial_hours) : null;
     const separatorHours = newEquip.separator_hours ? parseFloat(newEquip.separator_hours) : null;
@@ -99,7 +107,7 @@ export default function EquipmentPage() {
       payload.separator_hours = null;
     }
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'equipment',
       action: editing ? 'update' : 'insert',
@@ -107,12 +115,13 @@ export default function EquipmentPage() {
       data: payload,
     });
 
-    if (error) alert('Error: ' + error.message);
+    if (mutateError) error('Error: ' + mutateError.message);
     else {
       // Recompute after initial_hours change so current reflects MAX(logs, initial)
       if (editing && newEquip.type === 'motorized') {
         await supabase.rpc('recompute_equipment_hours', { p_equipment_id: editing.id });
       }
+      success(editing ? 'Equipment updated!' : 'Equipment added!');
       resetForm();
       fetchEquipment();
     }
@@ -146,15 +155,18 @@ export default function EquipmentPage() {
     const enteredPin = promptPinForDelete('this equipment');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'equipment',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
-    else fetchEquipment();
+    if (mutateError) error(mutateError.message);
+    else {
+      success('Equipment deleted');
+      fetchEquipment();
+    }
   };
 
   const toggleExpand = (id: string) => {
