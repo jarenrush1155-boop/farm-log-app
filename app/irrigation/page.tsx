@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
+import EmptyState from '../../components/EmptyState';
 
 export default function IrrigationPage() {
   const [fields, setFields] = useState<any[]>([]);
@@ -236,6 +237,14 @@ export default function IrrigationPage() {
       </div>
 
       <h4 className="font-medium mt-8 sm:mt-10 mb-3">2026 Irrigation Summary (Inches Depth)</h4>
+      {fields.length === 0 ? (
+        <div className="mb-8 sm:mb-10">
+          <EmptyState
+            title="No fields to summarize"
+            description="Add fields first, then meter readings and sprinkler applications will roll up here."
+          />
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow-sm mb-8 sm:mb-10">
         <TableScroll>
           <table className="w-full min-w-[640px]">
@@ -275,8 +284,17 @@ export default function IrrigationPage() {
           </table>
         </TableScroll>
       </div>
+      )}
 
       <h4 className="font-medium mb-3">Meter Reading History</h4>
+      {readings.length === 0 ? (
+        <div className="mb-8 sm:mb-10">
+          <EmptyState
+            title="No meter readings yet"
+            description="Add acre-feet meter readings using the form above."
+          />
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow-sm mb-8 sm:mb-10">
         <TableScroll>
           <table className="w-full min-w-[480px]">
@@ -308,8 +326,15 @@ export default function IrrigationPage() {
           </table>
         </TableScroll>
       </div>
+      )}
 
       <h4 className="font-medium mb-3">Sprinkler Application History</h4>
+      {applications.length === 0 ? (
+        <EmptyState
+          title="No sprinkler applications yet"
+          description="Log inches applied using the form above."
+        />
+      ) : (
       <div className="bg-white rounded-xl shadow-sm">
         <TableScroll>
           <table className="w-full min-w-[480px]">
@@ -341,6 +366,7 @@ export default function IrrigationPage() {
           </table>
         </TableScroll>
       </div>
+      )}
     </div>
   );
 }
