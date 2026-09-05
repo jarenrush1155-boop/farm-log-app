@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
+import EmptyState from '../../components/EmptyState';
 
 type Field = {
   id: string;
@@ -142,65 +143,74 @@ export default function FieldsPage() {
         </div>
       </div>
 
-      {/* Mobile cards */}
-      <div className="space-y-3 sm:hidden">
-        {fields.map((field) => (
-          <div key={field.id} className="bg-white border rounded-xl p-4 shadow-sm">
-            <div className="flex justify-between gap-3">
-              <div>
-                <p className="font-semibold">{field.name}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {field.acres} ac · <span className="capitalize">{field.type}</span>
-                </p>
-                {field.legal_description && <p className="text-xs text-gray-500 mt-1">{field.legal_description}</p>}
+      {fields.length === 0 ? (
+        <EmptyState
+          title="No fields yet"
+          description="Add your first field using the form above to start logging operations, spray, and irrigation."
+        />
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 sm:hidden">
+            {fields.map((field) => (
+              <div key={field.id} className="bg-white border rounded-xl p-4 shadow-sm">
+                <div className="flex justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{field.name}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {field.acres} ac · <span className="capitalize">{field.type}</span>
+                    </p>
+                    {field.legal_description && <p className="text-xs text-gray-500 mt-1">{field.legal_description}</p>}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-4">
+                  <button onClick={() => editField(field)} className="text-blue-600 min-h-[44px]">
+                    Edit
+                  </button>
+                  <button onClick={() => deleteField(field.id)} className="text-red-600 min-h-[44px]">
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 flex gap-4">
-              <button onClick={() => editField(field)} className="text-blue-600 min-h-[44px]">
-                Edit
-              </button>
-              <button onClick={() => deleteField(field.id)} className="text-red-600 min-h-[44px]">
-                Delete
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Desktop table */}
-      <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
-        <TableScroll>
-          <table className="w-full min-w-[640px]">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-4 text-left">Field Name</th>
-                <th className="p-4 text-right">Acres</th>
-                <th className="p-4 text-center">Type</th>
-                <th className="p-4 text-center">Legal Description</th>
-                <th className="p-4 w-32 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map((field) => (
-                <tr key={field.id} className="border-t hover:bg-gray-50">
-                  <td className="p-4 font-medium">{field.name}</td>
-                  <td className="p-4 text-right">{field.acres}</td>
-                  <td className="p-4 text-center font-medium capitalize">{field.type}</td>
-                  <td className="p-4 text-center text-sm text-gray-600">{field.legal_description || '—'}</td>
-                  <td className="p-4 text-center">
-                    <button onClick={() => editField(field)} className="text-blue-600 hover:underline mr-4 min-h-[44px]">
-                      Edit
-                    </button>
-                    <button onClick={() => deleteField(field.id)} className="text-red-600 hover:underline min-h-[44px]">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
-      </div>
+          {/* Desktop table */}
+          <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
+            <TableScroll>
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="p-4 text-left">Field Name</th>
+                    <th className="p-4 text-right">Acres</th>
+                    <th className="p-4 text-center">Type</th>
+                    <th className="p-4 text-center">Legal Description</th>
+                    <th className="p-4 w-32 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((field) => (
+                    <tr key={field.id} className="border-t hover:bg-gray-50">
+                      <td className="p-4 font-medium">{field.name}</td>
+                      <td className="p-4 text-right">{field.acres}</td>
+                      <td className="p-4 text-center font-medium capitalize">{field.type}</td>
+                      <td className="p-4 text-center text-sm text-gray-600">{field.legal_description || '—'}</td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => editField(field)} className="text-blue-600 hover:underline mr-4 min-h-[44px]">
+                          Edit
+                        </button>
+                        <button onClick={() => deleteField(field.id)} className="text-red-600 hover:underline min-h-[44px]">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+          </div>
+        </>
+      )}
     </div>
   );
 }
