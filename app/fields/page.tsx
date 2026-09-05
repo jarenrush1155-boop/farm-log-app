@@ -151,7 +151,6 @@ export default function FieldsPage() {
         />
       ) : (
         <>
-          {/* Mobile cards */}
           <div className="space-y-3 sm:hidden">
             {fields.map((field) => (
               <div key={field.id} className="bg-white border rounded-xl p-4 shadow-sm">
@@ -176,7 +175,6 @@ export default function FieldsPage() {
             ))}
           </div>
 
-          {/* Desktop table */}
           <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
             <TableScroll>
               <table className="w-full min-w-[640px]">
@@ -185,7 +183,7 @@ export default function FieldsPage() {
                     <th className="p-4 text-left">Field Name</th>
                     <th className="p-4 text-right">Acres</th>
                     <th className="p-4 text-center">Type</th>
-                    <th className="p-4 text of-center">Legal Description</th>
+                    <th className="p-4 text-center">Legal Description</th>
                     <th className="p-4 w-32 text-center">Actions</th>
                   </tr>
                 </thead>
