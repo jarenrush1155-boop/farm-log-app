@@ -6,8 +6,10 @@ import { mutateWithPin, promptPinForDelete } from '../../lib/pin';
 import PinField from '../../components/PinField';
 import TableScroll from '../../components/TableScroll';
 import EmptyState from '../../components/EmptyState';
+import { useToast } from '../../components/ToastProvider';
 
 export default function PremixesPage() {
+  const { success, error } = useToast();
   const [premixes, setPremixes] = useState<any[]>([]);
   const [chemicals, setChemicals] = useState<any[]>([]);
   const [pin, setPin] = useState('');
@@ -59,12 +61,15 @@ export default function PremixesPage() {
 
   const savePremix = async () => {
     if (!newPremix.name || selectedChemicals.length === 0) {
-      alert('Premix name and at least one chemical required');
+      error('Premix name and at least one chemical required');
       return;
     }
-    if (!pin) return alert('Please enter the PIN to save');
+    if (!pin) {
+      error('Please enter the PIN to save');
+      return;
+    }
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin,
       table: 'premixes',
       action: editingPremix ? 'update' : 'insert',
@@ -76,9 +81,9 @@ export default function PremixesPage() {
       },
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
-      alert(editingPremix ? 'Premix updated!' : 'Premix saved!');
+      success(editingPremix ? 'Premix updated!' : 'Premix saved!');
       resetForm();
       fetchPremixes();
     }
@@ -103,15 +108,16 @@ export default function PremixesPage() {
     const enteredPin = promptPinForDelete('this premix');
     if (!enteredPin) return;
 
-    const { error } = await mutateWithPin({
+    const { error: mutateError } = await mutateWithPin({
       pin: enteredPin,
       table: 'premixes',
       action: 'delete',
       id,
     });
 
-    if (error) alert(error.message);
+    if (mutateError) error(mutateError.message);
     else {
+      success('Premix deleted');
       if (editingPremix?.id === id) resetForm();
       fetchPremixes();
     }
