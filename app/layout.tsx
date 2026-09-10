@@ -3,6 +3,7 @@ import './globals.css';
 import AppShell from '../components/AppShell';
 import ToastProvider from '../components/ToastProvider';
 import PinProvider from '../components/PinProvider';
+import FarmProvider from '../components/FarmProvider';
 
 export const metadata: Metadata = {
   title: {
@@ -28,8 +29,11 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-gray-50 antialiased">
         <ToastProvider>
+          {/* PinProvider stays until Phase 2 removes PIN UI — do not strand production mid-cutover. */}
           <PinProvider>
-            <AppShell>{children}</AppShell>
+            <FarmProvider>
+              <AppShell>{children}</AppShell>
+            </FarmProvider>
           </PinProvider>
         </ToastProvider>
       </body>
