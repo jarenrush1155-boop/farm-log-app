@@ -7,7 +7,7 @@ Agriculture record-keeping app for fields, equipment, maintenance, field operati
 ## Stack
 
 - **Next.js** (App Router)
-- **Supabase** (Postgres + RLS + RPC)
+- **Supabase** (Postgres + Auth + RLS + RPC)
 - **Tailwind CSS**
 - **Vercel** (deploys from GitHub `main`)
 
@@ -22,6 +22,8 @@ Create `.env.local` with:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# Leave unset until Phase 1 cutover step 6 (keeps production usable pre-SQL):
+# NEXT_PUBLIC_REQUIRE_AUTH=true
 ```
 
 ```bash
@@ -30,31 +32,60 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Supabase
+## Phase 1 — Multi-farm auth (cutover)
 
-Writes are gated by a shared edit PIN. Apply SQL in the Supabase SQL editor:
+Architecture: [`docs/multi-farm-architecture.md`](docs/multi-farm-architecture.md)  
+SQL: [`supabase/multi_farm_phase1.sql`](supabase/multi_farm_phase1.sql)
 
-1. **`supabase/pin_mutations.sql`** — `check_edit_pin` + `mutate_with_pin` (required)
-2. **`supabase/equipment_hours.sql`** — hour-meter recompute helpers/triggers (present in repo; apply if equipment hours are used)
+**Locked decisions:** no migration of existing JLM data (SQL may truncate); single role `editor` via `farm_members`; Supabase Auth + RLS; PIN/`mutate_with_pin` retired at SQL cutover; CSV export is not Phase 1.
 
-RLS blocks direct client writes. All inserts/updates/deletes go through `mutate_with_pin` (and a few operation-specific RPCs with the same PIN check). The PIN is **not** stored in app code; it lives in the database and is verified server-side.
+### Exact Supabase Dashboard steps
 
-Helpers: `lib/pin.ts` (`verifyPin`, `mutateWithPin`, `promptForPin`, `promptPinForDelete`).
+1. Open your project → **Authentication** → **Providers** → **Email** → enable.
+2. (Recommended for private/test farms) Authentication → **Providers** → Email → disable **Confirm email** so `/signup` gets a session immediately and can call `create_farm_for_new_user`. If confirm email stays on, users must confirm before farm creation works.
+3. Authentication → **URL configuration**: add your site URLs (`http://localhost:3000`, `https://jlmfarmlogs.vercel.app`, etc.) to Site URL / Redirect URLs as needed.
+4. **SQL Editor** → New query → paste and run the entire file `supabase/multi_farm_phase1.sql`.  
+   - This **TRUNCATES** business tables (fields, equipment, logs, …). No JLM data migration.  
+   - Creates `farms`, `farm_members`, adds `farm_id`, enables RLS, installs `create_farm_for_new_user`, replaces `mutate_with_pin` with an **auth + membership** version (PIN ignored).
+5. Deploy/merge the app that includes `/login`, `/signup`, FarmProvider, and middleware (this branch).
+6. Visit `/signup`, create the first account + farm name.
+7. In Vercel → Project → Settings → Environment Variables, set `NEXT_PUBLIC_REQUIRE_AUTH=true` (Production + Preview as desired), then redeploy. Locally add the same to `.env.local`.
+8. Smoke-test: sign in, dashboard loads, create/edit/delete one field (PIN modal may still appear until Phase 2 UI cleanup; server no longer validates PIN).
 
-## PIN
+**Do not** set `NEXT_PUBLIC_REQUIRE_AUTH=true` before Email is enabled and the SQL has been applied — that would lock users out of the live site with no working signup/membership path.
 
-- Forms include a PIN field for save/edit.
-- Deletes use confirm + PIN prompt (`promptPinForDelete`).
-- Wrong/missing PIN → mutation fails; UI shows a toast error.
+### Pre-cutover (current production)
+
+Until you run `multi_farm_phase1.sql`, the legacy PIN path still applies:
+
+1. **`supabase/pin_mutations.sql`** — `check_edit_pin` + `mutate_with_pin` (PIN-gated)
+2. **`supabase/equipment_hours.sql`** — hour-meter helpers (if used)
+
+`PinProvider` remains in the layout on purpose so a mid-PR deploy does not strand production before the runbook above is complete.
+
+## Auth scaffolding (code)
+
+| Piece | Path |
+|-------|------|
+| Browser client | `lib/supabase/client.ts` |
+| Server client | `lib/supabase/server.ts` |
+| Back-compat export | `lib/supabase.ts` (existing page imports) |
+| Session refresh + optional gate | `middleware.ts` |
+| Login / Signup | `app/login`, `app/signup` |
+| Active farm context | `components/FarmProvider.tsx` |
+
+Signup calls `create_farm_for_new_user` after `signUp` so the user gets a farm + `editor` membership.
 
 ## Deploy
 
-Vercel project is linked to this GitHub repo. Pushes to **`main`** deploy automatically. Set the same `NEXT_PUBLIC_SUPABASE_*` env vars in the Vercel project settings.
+Vercel project is linked to this GitHub repo. Pushes to **`main`** deploy automatically. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and (after cutover) `NEXT_PUBLIC_REQUIRE_AUTH` in Vercel.
 
 ## Page map
 
 | Route | Purpose |
 |-------|---------|
+| `/login` | Email/password sign-in |
+| `/signup` | Create account + first farm |
 | `/` | Dashboard — acres, counts, recent ops/sprays/tasks |
 | `/fields` | Field CRUD (name, acres, irrigated/dryland) |
 | `/equipment` | Equipment CRUD + hour meters |

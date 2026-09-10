@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useFarmOptional } from './FarmProvider';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', shortLabel: 'Home', icon: '🏠' },
@@ -66,9 +67,70 @@ function NavLinks({
   );
 }
 
+function AccountFooter({ onNavigate }: { onNavigate?: () => void }) {
+  const farm = useFarmOptional();
+  const router = useRouter();
+
+  if (!farm?.userEmail) {
+    return (
+      <div className="mt-4 px-2 space-y-2 border-t border-emerald-700/50 pt-4">
+        <Link
+          href="/login"
+          onClick={onNavigate}
+          className="block text-sm text-emerald-100 hover:text-white min-h-[44px] flex items-center px-2"
+        >
+          Sign in
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 px-2 space-y-2 border-t border-emerald-700/50 pt-4">
+      {farm.farms.length > 1 ? (
+        <label className="block text-xs text-emerald-200 px-2">
+          Active farm
+          <select
+            className="mt-1 w-full rounded-lg bg-emerald-900/40 border border-emerald-600 text-white text-sm p-2 min-h-[44px]"
+            value={farm.activeFarmId ?? ''}
+            onChange={(e) => farm.setActiveFarmId(e.target.value)}
+          >
+            {farm.farms.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="text-xs text-emerald-200 px-2 truncate" title={farm.activeFarm?.name}>
+          {farm.activeFarm?.name ?? 'No farm'}
+        </p>
+      )}
+      <p className="text-xs text-emerald-100/80 px-2 truncate" title={farm.userEmail}>
+        {farm.userEmail}
+      </p>
+      <button
+        type="button"
+        className="w-full text-left px-2 py-2 rounded-lg text-sm text-emerald-100 hover:bg-emerald-700 min-h-[44px]"
+        onClick={async () => {
+          onNavigate?.();
+          await farm.signOut();
+          router.push('/login');
+          router.refresh();
+        }}
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
   // Close drawer on route change
   useEffect(() => {
@@ -87,6 +149,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [menuOpen]);
 
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
   const currentLabel = menuItems.find((i) => i.href === pathname)?.label ?? 'Farm Log';
 
   return (
@@ -95,6 +161,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex md:w-64 md:shrink-0 md:flex-col bg-emerald-800 text-white p-4">
         <h1 className="text-2xl font-bold mb-8 px-4">🌾 Farm Log</h1>
         <NavLinks pathname={pathname} />
+        <AccountFooter />
       </aside>
 
       {/* Mobile top bar */}
@@ -135,6 +202,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <NavLinks pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+            <AccountFooter onNavigate={() => setMenuOpen(false)} />
           </aside>
         </div>
       )}
