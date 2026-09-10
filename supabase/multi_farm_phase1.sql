@@ -6,13 +6,13 @@
 -- RUNBOOK (also see docs/multi-farm-architecture.md and README):
 -- 1. Enable Email auth in Supabase Dashboard → Authentication → Providers.
 -- 2. Deploy the app that includes /login, /signup, FarmProvider (optional:
---    leave NEXT_PUBLIC_REQUIRE_AUTH unset so the live site still works if you
+--    leave REQUIRE_AUTH unset so the live site still works if you
 --    have not run this SQL yet).
 -- 3. Take a backup if you care about any non-JLM data (JLM production rows are
 --    NOT migrated — this script TRUNCATEs business tables by design).
 -- 4. Run THIS entire script in SQL Editor.
 -- 5. Sign up at /signup (creates farm + membership).
--- 6. Set NEXT_PUBLIC_REQUIRE_AUTH=true in Vercel / .env.local and redeploy.
+-- 6. Set REQUIRE_AUTH=true in Vercel (Config / server env) / .env.local and redeploy.
 -- 7. Smoke-test; optionally drop check_edit_pin (see bottom).
 --
 -- DO NOT run this against a database you need to keep without a backup.
