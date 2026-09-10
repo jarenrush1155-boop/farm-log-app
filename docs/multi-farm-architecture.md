@@ -70,7 +70,7 @@ Anon key alone cannot read or write business data after cutover.
 ### Routes
 
 - Public: `/login`, `/signup`
-- App routes: gated when `NEXT_PUBLIC_REQUIRE_AUTH=true` (see cutover)
+- App routes: gated when `REQUIRE_AUTH=true` (see cutover)
 - PinProvider remains mounted until a later PR removes PIN UI; after cutover the DB no longer trusts PIN
 
 ### Farm context
@@ -111,14 +111,14 @@ Out of scope: CSV export, migrating existing JLM rows, owner/viewer roles, rewri
 Order of operations:
 
 1. **Staging / confirm Email provider** in Supabase Dashboard → Authentication → Providers → Email (enable). For internal/test, you may disable "Confirm email" so signup works immediately.
-2. **Deploy this branch** (or merge to `main`) **without** setting `NEXT_PUBLIC_REQUIRE_AUTH` yet. Login/signup pages exist; old PIN path still works against pre-cutover SQL.
+2. **Deploy this branch** (or merge to `main`) **without** setting `REQUIRE_AUTH` yet. Login/signup pages exist; old PIN path still works against pre-cutover SQL.
 3. **Run** `supabase/multi_farm_phase1.sql` in the SQL editor. This truncates business tables, adds `farm_id`, creates `farms` / `farm_members`, installs RLS, replaces `mutate_with_pin` with an auth+membership version, and retires PIN checks.
 4. **Sign up** the first real user at `/signup` (creates farm + membership).
-5. **Set** `NEXT_PUBLIC_REQUIRE_AUTH=true` in Vercel (and local `.env.local`) and redeploy so middleware requires login for app routes.
+5. **Set** `REQUIRE_AUTH=true` in Vercel as a **Config** (server) variable — not `NEXT_PUBLIC_` — (and local `.env.local`) and redeploy so middleware requires login for app routes.
 6. **Smoke-test** login, dashboard reads, and one create/update/delete per major area.
 7. **Optional:** revoke/drop `check_edit_pin` once you are satisfied (commented guidance in the SQL file).
 
-Rollback sketch: restore DB from backup taken before step 3; unset `NEXT_PUBLIC_REQUIRE_AUTH`; redeploy previous app revision. There is **no** in-place restore of truncated JLM data by design.
+Rollback sketch: restore DB from backup taken before step 3; unset `REQUIRE_AUTH`; redeploy previous app revision. There is **no** in-place restore of truncated JLM data by design.
 
 ## Security notes
 

@@ -23,7 +23,7 @@ Create `.env.local` with:
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # Leave unset until Phase 1 cutover step 6 (keeps production usable pre-SQL):
-# NEXT_PUBLIC_REQUIRE_AUTH=true
+# REQUIRE_AUTH=true
 ```
 
 ```bash
@@ -49,10 +49,10 @@ SQL: [`supabase/multi_farm_phase1.sql`](supabase/multi_farm_phase1.sql)
    - Creates `farms`, `farm_members`, adds `farm_id`, enables RLS, installs `create_farm_for_new_user`, replaces `mutate_with_pin` with an **auth + membership** version (PIN ignored).
 5. Deploy/merge the app that includes `/login`, `/signup`, FarmProvider, and middleware (this branch).
 6. Visit `/signup`, create the first account + farm name.
-7. In Vercel → Project → Settings → Environment Variables, set `NEXT_PUBLIC_REQUIRE_AUTH=true` (Production + Preview as desired), then redeploy. Locally add the same to `.env.local`.
+7. In Vercel → Project → Settings → Environment Variables, set `REQUIRE_AUTH=true` as a **Config** (server) variable for Production (+ Preview if you want), then redeploy. Locally add the same to `.env.local`. Do **not** use the `NEXT_PUBLIC_` prefix — middleware reads this server-side only.
 8. Smoke-test: sign in, dashboard loads, create/edit/delete one field (PIN modal may still appear until Phase 2 UI cleanup; server no longer validates PIN).
 
-**Do not** set `NEXT_PUBLIC_REQUIRE_AUTH=true` before Email is enabled and the SQL has been applied — that would lock users out of the live site with no working signup/membership path.
+**Do not** set `REQUIRE_AUTH=true` before Email is enabled and the SQL has been applied — that would lock users out of the live site with no working signup/membership path.
 
 ### Pre-cutover (current production)
 
@@ -78,7 +78,7 @@ Signup calls `create_farm_for_new_user` after `signUp` so the user gets a farm +
 
 ## Deploy
 
-Vercel project is linked to this GitHub repo. Pushes to **`main`** deploy automatically. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and (after cutover) `NEXT_PUBLIC_REQUIRE_AUTH` in Vercel.
+Vercel project is linked to this GitHub repo. Pushes to **`main`** deploy automatically. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and (after cutover) `REQUIRE_AUTH` in Vercel.
 
 ## Page map
 
