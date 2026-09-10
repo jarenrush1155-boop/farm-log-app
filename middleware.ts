@@ -36,7 +36,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
+  // Server-only flag (Vercel Config). NEXT_PUBLIC_ variant kept briefly for cutover.
+  const requireAuth =
+    process.env.REQUIRE_AUTH === 'true' ||
+    process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
   const { pathname } = request.nextUrl;
 
   if (requireAuth && !user && !isPublicPath(pathname)) {
