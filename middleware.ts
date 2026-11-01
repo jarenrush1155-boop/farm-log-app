@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/signup'];
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password'];
+// Reachable signed in or out (no redirect to / for signed-in users).
+const OPEN_PATHS = ['/auth/callback'];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -41,6 +43,10 @@ export async function middleware(request: NextRequest) {
     process.env.REQUIRE_AUTH === 'true' ||
     process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
   const { pathname } = request.nextUrl;
+
+  if (OPEN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return supabaseResponse;
+  }
 
   if (requireAuth && !user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();

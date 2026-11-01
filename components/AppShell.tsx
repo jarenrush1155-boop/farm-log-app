@@ -130,7 +130,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isAuthRoute = pathname === '/login' || pathname === '/signup';
+  const isAuthRoute = ['/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname);
 
   // Close drawer on route change
   useEffect(() => {
