@@ -116,18 +116,37 @@ function AccountFooter({ onNavigate }: { onNavigate?: () => void }) {
         onClick={async () => {
           onNavigate?.();
           await farm.signOut();
-          router.push('/login');
+          router.replace('/login');
           router.refresh();
         }}
       >
-        Sign out
+        Log out
       </button>
     </div>
   );
 }
 
+const FALLBACK_TITLE = 'Farm Logs';
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const farm = useFarmOptional();
+  const farmTitle = (!farm?.loading && farm?.activeFarm?.name) || FALLBACK_TITLE;
+
+  // Keep the browser tab title in sync with the active farm.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const page = menuItems.find((i) => i.href === pathname && i.href !== '/')?.label;
+    document.title = page ? `${page} · ${farmTitle}` : farmTitle;
+  }, [farmTitle, pathname]);
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await farm?.signOut();
+    router.replace('/login');
+    router.refresh();
+  };
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isAuthRoute = ['/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname);
@@ -153,13 +172,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const currentLabel = menuItems.find((i) => i.href === pathname)?.label ?? 'Farm Log';
+  const currentLabel = menuItems.find((i) => i.href === pathname)?.label ?? 'Dashboard';
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row bg-gray-50 text-gray-900">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-64 md:shrink-0 md:flex-col bg-emerald-800 text-white p-4">
-        <h1 className="text-2xl font-bold mb-8 px-4">🌾 Farm Log</h1>
+        <h1 className="text-2xl font-bold mb-8 px-4 truncate" title={farmTitle}>
+          🌾 {farmTitle}
+        </h1>
         <NavLinks pathname={pathname} />
         <AccountFooter />
       </aside>
@@ -175,9 +196,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-2xl leading-none">☰</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-emerald-200">JLM Farm Logs</p>
+          <p className="text-xs text-emerald-200 truncate">{farmTitle}</p>
           <p className="font-semibold truncate">{currentLabel}</p>
         </div>
+        {farm?.userEmail && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="shrink-0 min-h-[44px] rounded-lg px-3 text-sm text-emerald-100 hover:bg-emerald-700"
+          >
+            Log out
+          </button>
+        )}
       </header>
 
       {/* Mobile drawer overlay */}
@@ -191,7 +221,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
           <aside className="relative z-10 flex h-full w-[min(18rem,85vw)] flex-col bg-emerald-800 text-white p-4 shadow-xl safe-top safe-bottom">
             <div className="flex items-center justify-between mb-6 px-2">
-              <h1 className="text-xl font-bold">🌾 Farm Log</h1>
+              <h1 className="text-xl font-bold truncate" title={farmTitle}>
+                🌾 {farmTitle}
+              </h1>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
