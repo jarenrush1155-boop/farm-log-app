@@ -7,8 +7,8 @@ import FarmProvider from '../components/FarmProvider';
 
 export const metadata: Metadata = {
   title: {
-    default: 'JLM Farm Logs',
-    template: '%s · JLM Farm Logs',
+    default: 'Farm Logs',
+    template: '%s · Farm Logs',
   },
   description: 'Farm field, equipment, spray, and irrigation logs',
 };

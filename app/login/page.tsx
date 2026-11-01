@@ -43,7 +43,7 @@ function LoginForm() {
           🌾
         </p>
         <h1 className="text-2xl font-bold text-gray-900">Sign in</h1>
-        <p className="text-sm text-gray-600 mt-1">JLM Farm Logs — multi-farm accounts</p>
+        <p className="text-sm text-gray-600 mt-1">Farm Logs — multi-farm accounts</p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
